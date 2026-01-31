@@ -3,3 +3,4 @@ pyvenv.cfg
 __pycache__/
 *.pyc
 .env
+data_extraction.md

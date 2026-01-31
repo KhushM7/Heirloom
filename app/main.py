@@ -1,6 +1,10 @@
 from fastapi import FastAPI
-from core.settings import settings
 
+from app.api.routes import api_router
+from app.core.extraction_worker import ExtractionWorker
+from app.core.settings import settings
+
+worker = ExtractionWorker()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -9,8 +13,14 @@ app = FastAPI(
 )
 
 
-app.add_api_route(
-    settings.API_V1_STR,
-    lambda: {"message": "Welcome to Heirloom API"},
-    methods=["GET"],
-)
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.on_event("startup")
+def start_worker() -> None:
+    worker.start()
+
+
+@app.on_event("shutdown")
+def stop_worker() -> None:
+    worker.stop()
