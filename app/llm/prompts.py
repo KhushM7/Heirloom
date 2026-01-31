@@ -11,5 +11,5 @@ Context pack (JSON):
 
 Return a JSON object with:
 - answer_text: string
-- used_citation_ids: list of citation UUID strings used to support the answer
+- used_citation_ids: list of memory_unit_id strings used to support the answer
 """
