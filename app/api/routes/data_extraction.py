@@ -70,7 +70,6 @@ def upload_confirm(payload: UploadConfirmRequest) -> UploadConfirmResponse:
                 "file_name": payload.object_key,
                 "mime_type": payload.mime_type,
                 "bytes": head.bytes,
-                "duration_seconds": payload.duration_seconds,
             },
         )
 
@@ -126,7 +125,7 @@ def list_memory_units(media_asset_id: str) -> list[MemoryUnitOut]:
         {
             "media_asset_id": f"eq.{media_asset_id}",
             "select": "*",
-            "order": "start_time_ms.asc.nullslast",
+            "order": "id.desc",
         },
     )
     return [MemoryUnitOut(**unit) for unit in memory_units]

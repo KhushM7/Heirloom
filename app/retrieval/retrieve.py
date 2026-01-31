@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.api.schemas import CitationOut, ContextPack, RetrievedMemory
+from app.api.schemas import ContextPack, RetrievedMemory
 from app.core.settings import settings
 from app.db.queries import retrieve_memory_units
 from app.retrieval.keywords import extract_keywords
@@ -15,41 +15,37 @@ def build_context_pack(question: str, retrieved: list[RetrievedMemory]) -> Conte
             "title": memory.title,
             "summary": memory.summary,
             "description": memory.description,
-            "citations": [
-                {
-                    "citation_id": citation.citation_id,
-                    "kind": citation.kind,
-                    "evidence_text": citation.evidence_text,
-                    "start_time_ms": citation.start_time_ms,
-                    "end_time_ms": citation.end_time_ms,
-                    "asset_key": citation.asset_key,
-                }
-                for citation in memory.citations
-            ],
+            "event_type": memory.event_type,
+            "places": memory.places,
+            "dates": memory.dates,
+            "keywords": memory.keywords,
+            "asset_key": memory.asset_key,
+            "asset_mime_type": memory.asset_mime_type,
         }
         memories.append(memory_block)
     return ContextPack(question=question, memories=memories)
 
 
-def retrieve_context(profile_id: str, question: str) -> tuple[ContextPack, list[CitationOut]]:
+def retrieve_context(profile_id: str, question: str) -> tuple[ContextPack, list[RetrievedMemory]]:
     extraction = extract_keywords(question)
     keywords = extraction["keywords"]
-    retrieved = retrieve_memory_units(profile_id, keywords, settings.DEFAULT_TOP_K)
+    event_types = extraction["event_types"]
+    retrieved = retrieve_memory_units(
+        profile_id, keywords, event_types, settings.DEFAULT_TOP_K
+    )
 
     context_pack = build_context_pack(question, retrieved)
-    citation_outputs: list[CitationOut] = []
-    for memory in retrieved:
-        for citation in memory.citations:
-            asset_url = resolve_public_url(citation.asset_key or "")
-            citation_outputs.append(
-                CitationOut(
-                    citation_id=citation.citation_id,
-                    kind=citation.kind,
-                    asset_url=asset_url,
-                    start_time_ms=citation.start_time_ms,
-                    end_time_ms=citation.end_time_ms,
-                    evidence_text=citation.evidence_text,
-                )
-            )
+    return context_pack, retrieved
 
-    return context_pack, citation_outputs
+
+def resolve_source_urls(
+    retrieved: list[RetrievedMemory], used_ids: set[str]
+) -> list[str]:
+    urls = []
+    for memory in retrieved:
+        if memory.memory_unit_id not in used_ids:
+            continue
+        if not memory.asset_key:
+            continue
+        urls.append(resolve_public_url(memory.asset_key))
+    return sorted(set(urls))

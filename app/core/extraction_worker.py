@@ -23,13 +23,11 @@ LOGGER = logging.getLogger("extraction-worker")
 
 POLL_INTERVAL_SECONDS = 3
 TEXT_CHUNK_SIZE = 1500
-EVIDENCE_SNIPPET_SIZE = 300
 
 
 @dataclass
 class ExtractionResult:
     memory_units: List[Dict[str, Any]]
-    citations: List[Dict[str, Any]]
 
 
 class WorkerStop:
@@ -150,13 +148,12 @@ class ExtractionWorker:
             return self._extract_audio(media_asset)
         if mime_type.startswith("video/"):
             return self._extract_video(media_asset)
-        return ExtractionResult(memory_units=[], citations=[])
+        return ExtractionResult(memory_units=[])
 
     def _extract_text(self, media_asset: Dict[str, Any]) -> ExtractionResult:
         content = self._read_text_object(media_asset)
         chunks = self._chunk_text(content)
         memory_units = []
-        citations = []
         for idx, chunk in enumerate(chunks, start=1):
             title = f"Text Chunk {idx}"
             summary = chunk[:200].strip() or "(empty)"
@@ -164,116 +161,64 @@ class ExtractionWorker:
                 {
                     "profile_id": media_asset["profile_id"],
                     "media_asset_id": media_asset["id"],
-                    "start_time_ms": None,
-                    "end_time_ms": None,
                     "title": title,
                     "summary": summary,
                     "description": chunk.strip() or None,
                     "event_type": "Other",
                     "places": ["unknown"],
                     "dates": ["unspecified"],
-                    "keywords": None,
+                    "keywords": [],
                 }
             )
-            citations.append(
-                {
-                    "media_asset_id": media_asset["id"],
-                    "mime_type": media_asset["mime_type"],
-                    "start_time_ms": None,
-                    "end_time_ms": None,
-                    "evidence_text": chunk[:EVIDENCE_SNIPPET_SIZE].strip() or "(empty)",
-                }
-            )
-        return ExtractionResult(memory_units=memory_units, citations=citations)
+        return ExtractionResult(memory_units=memory_units)
 
     def _extract_image(self, media_asset: Dict[str, Any]) -> ExtractionResult:
         memory_units = [
             {
                 "profile_id": media_asset["profile_id"],
                 "media_asset_id": media_asset["id"],
-                "start_time_ms": None,
-                "end_time_ms": None,
                 "title": "Image Memory",
                 "summary": "Image uploaded.",
                 "description": "Image content not analyzed.",
                 "event_type": "Other",
                 "places": ["unknown"],
                 "dates": ["unspecified"],
-                "keywords": None,
+                "keywords": [],
             }
         ]
-        citations = [
-            {
-                "media_asset_id": media_asset["id"],
-                "mime_type": media_asset["mime_type"],
-                "start_time_ms": None,
-                "end_time_ms": None,
-                "evidence_text": "Visual evidence not analyzed.",
-            }
-        ]
-        return ExtractionResult(memory_units=memory_units, citations=citations)
+        return ExtractionResult(memory_units=memory_units)
 
     def _extract_audio(self, media_asset: Dict[str, Any]) -> ExtractionResult:
-        duration_ms = self._duration_ms(media_asset)
         memory_units = [
             {
                 "profile_id": media_asset["profile_id"],
                 "media_asset_id": media_asset["id"],
-                "start_time_ms": 0,
-                "end_time_ms": duration_ms,
-                "title": "Audio Segment 1",
+                "title": "Audio Memory",
                 "summary": "Audio uploaded.",
-                "description": None,
+                "description": "Audio transcript not analyzed.",
                 "event_type": "Other",
                 "places": ["unknown"],
                 "dates": ["unspecified"],
-                "keywords": None,
+                "keywords": [],
             }
         ]
-        citations = [
-            {
-                "media_asset_id": media_asset["id"],
-                "mime_type": media_asset["mime_type"],
-                "start_time_ms": 0,
-                "end_time_ms": duration_ms,
-                "evidence_text": "Transcript not available.",
-            }
-        ]
-        return ExtractionResult(memory_units=memory_units, citations=citations)
+        return ExtractionResult(memory_units=memory_units)
 
     def _extract_video(self, media_asset: Dict[str, Any]) -> ExtractionResult:
-        duration_ms = self._duration_ms(media_asset)
         memory_units = [
             {
                 "profile_id": media_asset["profile_id"],
                 "media_asset_id": media_asset["id"],
-                "start_time_ms": 0,
-                "end_time_ms": duration_ms,
-                "title": "Video Segment 1",
+                "title": "Video Memory",
                 "summary": "Video uploaded.",
                 "description": "Video content not analyzed.",
                 "event_type": "Other",
                 "places": ["unknown"],
                 "dates": ["unspecified"],
-                "keywords": None,
+                "keywords": [],
             }
         ]
-        citations = [
-            {
-                "media_asset_id": media_asset["id"],
-                "mime_type": media_asset["mime_type"],
-                "start_time_ms": 0,
-                "end_time_ms": duration_ms,
-                "evidence_text": "Transcript/visual evidence not available.",
-            }
-        ]
-        return ExtractionResult(memory_units=memory_units, citations=citations)
-
-    def _duration_ms(self, media_asset: Dict[str, Any]) -> int:
-        duration_seconds = media_asset.get("duration_seconds")
-        if duration_seconds is None:
-            raise HTTPException(status_code=400, detail="Missing duration_seconds")
-        return max(int(float(duration_seconds) * 1000), 1)
+        return ExtractionResult(memory_units=memory_units)
 
     def _read_text_object(self, media_asset: Dict[str, Any]) -> str:
         object_key = media_asset.get("file_name")
@@ -306,54 +251,23 @@ class ExtractionWorker:
                 existing_keys.add(key)
 
         inserted_count = 0
-        for unit, citation in zip(extraction.memory_units, extraction.citations):
+        for unit in extraction.memory_units:
             key = self._memory_key(media_asset, unit)
             if key and key in existing_keys:
-                existing_unit = self._find_existing_unit(existing_units, unit)
-                if existing_unit:
-                    self._ensure_citation(existing_unit, citation)
                 continue
 
-            new_unit = supabase_insert("memory_units", unit)
+            supabase_insert("memory_units", unit)
             inserted_count += 1
             existing_keys.add(key)
-            citation_payload = dict(citation)
-            citation_payload["memory_unit_id"] = new_unit["id"]
-            supabase_insert("citations", citation_payload)
 
         return inserted_count, len(existing_units)
 
-    def _ensure_citation(self, unit: Dict[str, Any], citation: Dict[str, Any]) -> None:
-        existing = supabase_select(
-            "citations",
-            {"memory_unit_id": f"eq.{unit['id']}", "select": "id", "limit": 1},
-        )
-        if existing:
-            return
-        payload = dict(citation)
-        payload["memory_unit_id"] = unit["id"]
-        supabase_insert("citations", payload)
-
-    def _find_existing_unit(
-        self, existing_units: List[Dict[str, Any]], unit: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        for existing in existing_units:
-            if (
-                existing.get("title") == unit.get("title")
-                and existing.get("start_time_ms") == unit.get("start_time_ms")
-                and existing.get("end_time_ms") == unit.get("end_time_ms")
-            ):
-                return existing
-        return None
-
     @staticmethod
     def _memory_key(media_asset: Dict[str, Any], unit: Dict[str, Any]) -> Optional[str]:
-        mime_type = media_asset.get("mime_type")
-        if mime_type and mime_type.startswith(("audio/", "video/")):
-            return f"{media_asset['id']}:{unit.get('start_time_ms')}:{unit.get('end_time_ms')}:{unit.get('title')}"
-        if mime_type and mime_type.startswith(("image/", "text/")):
-            return f"{media_asset['id']}:{unit.get('title')}"
-        return None
+        title = unit.get("title")
+        if not title:
+            return None
+        return f"{media_asset['id']}:{title}"
 
     def _mark_failed(self, job: Dict[str, Any], detail: str) -> None:
         supabase_update(
