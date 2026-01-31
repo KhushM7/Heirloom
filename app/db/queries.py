@@ -9,8 +9,6 @@ from app.db.supabase_client import supabase
 
 logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
 
 def _apply_text_search(query, keywords: list[str]):
     if not keywords:
