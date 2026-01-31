@@ -68,8 +68,8 @@ def retrieve_memory_units(
     query = (
         supabase.table("memory_units")
         .select(
-            "id, title, summary, description, created_at, keywords, event_type, places, dates, "
-            "media_assets(file_name, mime_type)"
+            "id, title, summary, description, keywords, event_type, places, dates, "
+            "media_assets(file_name, mime_type), "
             "citations(id, kind, evidence_text, start_time_ms, end_time_ms, media_asset_id, "
             "media_assets(id, gcs_url))"
         )
@@ -112,7 +112,6 @@ def retrieve_memory_units(
                 title=row.get("title"),
                 summary=row.get("summary"),
                 description=row.get("description"),
-                created_at=row.get("created_at"),
                 event_type=row.get("event_type"),
                 places=row.get("places") or [],
                 dates=row.get("dates") or [],
