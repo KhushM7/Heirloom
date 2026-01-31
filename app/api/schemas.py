@@ -63,16 +63,6 @@ class AskResponse(BaseModel):
     source_urls: list[str]
 
 
-class RetrievedCitation(BaseModel):
-    citation_id: str | None = None
-    kind: str
-    evidence_text: str
-    start_time_ms: int | None = None
-    end_time_ms: int | None = None
-    asset_id: str | None = None
-    asset_key: str | None = None
-
-
 class RetrievedMemory(BaseModel):
     memory_unit_id: str
     title: str

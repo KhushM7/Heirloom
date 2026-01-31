@@ -29,10 +29,9 @@ class GeminiClient:
         text = getattr(response, "text", "") or ""
         parsed = _parse_json_response(text)
         if not parsed:
-            return {"answer_text": "I don't know.", "used_citation_ids": []}
+            return {"answer_text": "I don't know."}
         return {
             "answer_text": parsed.get("answer_text", "I don't know."),
-            "used_citation_ids": parsed.get("used_citation_ids", []),
         }
 
 
