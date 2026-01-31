@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 import re
 from collections import Counter
+
+logger = logging.getLogger(__name__)
 
 
 STOPWORDS = {
@@ -78,4 +81,8 @@ def extract_keywords(question: str, top_n: int = 8) -> dict:
     counts = Counter(filtered)
     keywords = [word for word, _ in counts.most_common(top_n)]
     event_types = sorted({EVENT_TYPE_MAP[word] for word in keywords if word in EVENT_TYPE_MAP})
+    logger.debug(
+        "Keyword extraction complete.",
+        extra={"question": question, "keywords": keywords, "event_types": event_types},
+    )
     return {"keywords": keywords, "event_types": event_types}
