@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
+from pprint import pformat
 
-from app.api.schemas import RetrievedCitation, RetrievedMemory
-from app.db.supabase import supabase
+from app.api.schemas import RetrievedMemory
+from app.db.supabase_client import supabase
+
+logger = logging.getLogger(__name__)
 
 
 def _apply_text_search(query, keywords: list[str]):
@@ -37,6 +41,17 @@ def _apply_keyword_overlap(query, keywords: list[str]):
         return query.contains("keywords", keywords)
 
 
+def _apply_event_type_filter(query, event_types: list[str]):
+    if not event_types:
+        return query
+    clauses = []
+    for event_type in event_types:
+        clauses.append(f"event_type.ilike.%{event_type}%")
+    if clauses:
+        return query.or_(",".join(clauses))
+    return query
+
+
 def _parse_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -46,39 +61,34 @@ def _parse_datetime(value: str | None) -> datetime | None:
         return None
 
 
-def retrieve_memory_units(profile_id: str, keywords: list[str], top_k: int) -> list[RetrievedMemory]:
+def retrieve_memory_units(
+    profile_id: str, keywords: list[str], event_types: list[str], top_k: int
+) -> list[RetrievedMemory]:
     query = (
         supabase.table("memory_units")
         .select(
-            "id, title, summary, description, created_at, keywords, "
-            "citations(id, kind, evidence_text, start_time_ms, end_time_ms, media_asset_id, "
-            "media_assets(id, gcs_url))"
+            "id, title, summary, description, created_at, keywords, event_type, places, dates, "
+            "media_assets(file_name, mime_type)"
         )
         .eq("profile_id", profile_id)
     )
 
     query = _apply_text_search(query, keywords)
     query = _apply_keyword_overlap(query, keywords)
+    query = _apply_event_type_filter(query, event_types)
 
     response = query.execute()
     data = response.data or []
+    print("=== Retrieval Debug: Database Response ===")
+    print(pformat(data))
+    logger.info(
+        "Database retrieval complete.",
+        extra={"keyword_filters": keywords, "event_types": event_types, "row_count": len(data)},
+    )
 
     retrieved: list[RetrievedMemory] = []
     for row in data:
-        citations = []
-        for citation in row.get("citations") or []:
-            media_asset = citation.get("media_assets") or {}
-            citations.append(
-                RetrievedCitation(
-                    citation_id=citation.get("id"),
-                    kind=citation.get("kind") or "text",
-                    evidence_text=citation.get("evidence_text") or "",
-                    start_time_ms=citation.get("start_time_ms"),
-                    end_time_ms=citation.get("end_time_ms"),
-                    asset_id=citation.get("media_asset_id"),
-                    asset_key=media_asset.get("gcs_url"),
-                )
-            )
+        media_asset = row.get("media_assets") or {}
         retrieved.append(
             RetrievedMemory(
                 memory_unit_id=row.get("id"),
@@ -86,8 +96,12 @@ def retrieve_memory_units(profile_id: str, keywords: list[str], top_k: int) -> l
                 summary=row.get("summary"),
                 description=row.get("description"),
                 created_at=row.get("created_at"),
+                event_type=row.get("event_type"),
+                places=row.get("places") or [],
+                dates=row.get("dates") or [],
                 keywords=row.get("keywords") or [],
-                citations=citations,
+                asset_key=media_asset.get("file_name"),
+                asset_mime_type=media_asset.get("mime_type"),
             )
         )
 

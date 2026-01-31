@@ -60,3 +60,14 @@ def stream_s3_object(*, s3_client, key: str) -> StreamingResponse:
         media_type=media_type,
         headers=headers,
     )
+
+
+def resolve_public_url(key: str) -> str:
+    if not key:
+        return ""
+    base_url = settings.AWS_S3_PUBLIC_BASE_URL or ""
+    if base_url:
+        return f"{base_url.rstrip('/')}/{key.lstrip('/')}"
+    if settings.AWS_S3_BUCKET:
+        return f"s3://{settings.AWS_S3_BUCKET}/{key}"
+    return key
