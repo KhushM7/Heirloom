@@ -51,22 +51,17 @@ def retrieve_context(profile_id: str, question: str) -> tuple[ContextPack, list[
     return context_pack, retrieved
 
 
-def resolve_source_urls(
-    retrieved: list[RetrievedMemory], used_ids: set[str]
-) -> list[str]:
+def resolve_source_urls(retrieved: list[RetrievedMemory]) -> list[str]:
     urls = []
     for memory in retrieved:
-        if memory.memory_unit_id not in used_ids:
-            continue
         if not memory.asset_key:
             continue
         urls.append(resolve_public_url(memory.asset_key))
     resolved = sorted(set(urls))
     print("=== Retrieval Debug: Source URL Generation ===")
-    print(f"Used citation IDs: {sorted(used_ids)}")
     print(f"Generated URLs: {pformat(resolved)}")
     logger.info(
         "Source URL generation complete.",
-        extra={"used_ids": sorted(used_ids), "source_urls": resolved},
+        extra={"source_urls": resolved},
     )
     return resolved

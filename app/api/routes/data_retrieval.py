@@ -48,8 +48,7 @@ async def ask_profile_question(profile_id: str, payload: AskRequest) -> AskRespo
             detail=f"Gemini request failed: {exc}",
         ) from exc
 
-    used_ids = set(gemini_response.get("used_citation_ids", []))
-    source_urls = resolve_source_urls(retrieved, used_ids)
+    source_urls = resolve_source_urls(retrieved)
 
     return AskResponse(
         answer_text=gemini_response.get("answer_text", "I don't know."),
