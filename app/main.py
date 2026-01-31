@@ -15,8 +15,4 @@ app = FastAPI(
 )
 
 
-app.add_api_route(
-    settings.API_V1_STR,
-    lambda: {"message": "Welcome to Heirloom API"},
-    methods=["GET"],
-)
+app.include_router(api_router, prefix=settings.API_V1_STR)
