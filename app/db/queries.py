@@ -5,7 +5,6 @@ from datetime import datetime
 from pprint import pformat
 
 from app.api.schemas import RetrievedMemory
-from app.api.schemas import RetrievedCitation, RetrievedMemory
 from app.db.supabase_client import supabase
 
 logger = logging.getLogger(__name__)
@@ -68,10 +67,8 @@ def retrieve_memory_units(
     query = (
         supabase.table("memory_units")
         .select(
-            "id, title, summary, description, created_at, keywords, event_type, places, dates, "
+            "id, title, summary, description, keywords, event_type, places, dates, "
             "media_assets(file_name, mime_type)"
-            "citations(id, kind, evidence_text, start_time_ms, end_time_ms, media_asset_id, "
-            "media_assets(id, gcs_url))"
         )
         .eq("profile_id", profile_id)
     )
@@ -91,20 +88,6 @@ def retrieve_memory_units(
 
     retrieved: list[RetrievedMemory] = []
     for row in data:
-        citations = []
-        for citation in row.get("citations") or []:
-            media_asset = citation.get("media_assets") or {}
-            citations.append(
-                RetrievedCitation(
-                    citation_id=citation.get("id"),
-                    kind=citation.get("kind") or "text",
-                    evidence_text=citation.get("evidence_text") or "",
-                    start_time_ms=citation.get("start_time_ms"),
-                    end_time_ms=citation.get("end_time_ms"),
-                    asset_id=citation.get("media_asset_id"),
-                    asset_key=media_asset.get("gcs_url"),
-                )
-            )
         media_asset = row.get("media_assets") or {}
         retrieved.append(
             RetrievedMemory(
@@ -112,12 +95,10 @@ def retrieve_memory_units(
                 title=row.get("title"),
                 summary=row.get("summary"),
                 description=row.get("description"),
-                created_at=row.get("created_at"),
                 event_type=row.get("event_type"),
                 places=row.get("places") or [],
                 dates=row.get("dates") or [],
                 keywords=row.get("keywords") or [],
-                citations=citations,
                 asset_key=media_asset.get("file_name"),
                 asset_mime_type=media_asset.get("mime_type"),
             )
