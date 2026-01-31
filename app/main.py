@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 
-from app.api.routes import api_router
+from app.api.main import api_router
 from app.core.extraction_worker import ExtractionWorker
 
-from app.api.routes import router as qa_router
 from app.core.settings import settings
 
 worker = ExtractionWorker()
