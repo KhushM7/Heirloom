@@ -15,4 +15,7 @@ class Settings:
 
     API_V1_STR: str = "/api/v1"
 
+    PROJECT_NAME: str = "Heirloom API"
+    VERSION: str = "0.1.0"
+
 settings = Settings()
