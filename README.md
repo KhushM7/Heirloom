@@ -1,22 +1,22 @@
 # Heirloom
 
 ## Overview
-Heirloom is a full‑stack web application that lets families preserve multimedia memories (photos, letters, audio, and video), extract structured “memory units” from those artifacts using Gemini, and then ask questions that are answered with grounded responses and optional voice synthesis via ElevenLabs. The system is designed to feel like a living archive: upload artifacts, let the backend extract structured memories, then ask questions and hear replies spoken aloud.
+Heirloom is a full‑stack web application that lets families preserve multimedia memories (photos, letters, audio, and video), extract structured “memory units” from those artifacts using Gemini, and then ask questions that are answered with grounded responses and personal voice synthesis via ElevenLabs. The system is designed to feel like a living archive: upload artifacts, let the backend extract structured memories, then ask questions and hear replies spoken aloud in the voice of the person it is describing.
 
 This repository contains:
 - **Backend**: FastAPI service for uploads, memory extraction, retrieval, and voice responses. (`/app`)
-- **Frontend**: Next.js 16 app for the “Preserve” and “Discover” experiences. (`/frontend`)
+- **Frontend**: Next.js app for the “Preserve (Upload content)” and “Discover (Interact with the content)” experiences. (`/frontend`)
 
 ## Key Features
 - **Upload workflow with S3 presigned URLs** for safe, direct-to-storage uploads.
 - **Memory extraction worker** that processes queued jobs and writes memory units to Supabase.
 - **Question answering** over extracted memories using Gemini context packing.
-- **Voice clone & TTS** through ElevenLabs to speak answers.
+- **Voice clone & TTS** through ElevenLabs to clone a personal voice from an uploaded audio clip as well as speak answers.
 - **Source citations** for answers by linking back to uploaded media assets.
 
 ## How It Works
 ### 1) Create a profile
-The frontend creates a profile (optionally with a date of birth and voice sample). The backend stores the profile in Supabase.
+The frontend creates a profile with a date of birth and voice sample. The backend stores the profile in Supabase.
 
 ### 2) Upload media assets
 Uploads are handled in two phases:
@@ -24,16 +24,16 @@ Uploads are handled in two phases:
 2. **Upload confirm**: after the client uploads to S3, the backend confirms the object, creates a `media_assets` row, and queues an extraction job in `jobs`.
 
 ### 3) Extract memory units
-A background **ExtractionWorker** polls queued jobs, downloads the media, and asks Gemini to extract a single structured memory unit per asset (MVP behavior). It writes the extracted data into Supabase `memory_units`.
+A background **ExtractionWorker** polls queued jobs, downloads the media, and asks Gemini to extract a single structured memory unit per asset. It writes the extracted data into Supabase `memory_units`.
 
 ### 4) Ask questions
 The QA endpoint:
-- Extracts keywords from the user question (optionally using Gemini to match existing tags).
+- Extracts keywords from the user question using Gemini to group keywords and get similar as well as exact matching tags.
 - Queries Supabase for relevant memory units.
 - Builds a context pack and asks Gemini to answer **only from that context**.
 
 ### 5) Speak the answer
-If a voice ID exists (from ElevenLabs instant voice cloning) the answer is turned into audio and returned to the frontend as base64.
+Using the voice ID exists from ElevenLabs instant voice cloning the answer is turned into audio and returned to the frontend as base64.
 
 ## Architecture
 ```
@@ -68,13 +68,13 @@ frontend/                 Next.js frontend
 The backend accepts uploads up to **100 MB** in the following formats:
 - Video: `.mp4`, `.mov`
 - Audio: `.mp3`, `.wav`
-- Images: `.png`, `.jpg`, `.jpeg`, `.webp`
-- Text: `.txt`, `.md`
+- Images: `.png`, `.jpg`, `.jpeg`
+- Text: `.txt`
 
 ## Local Development
 
 ### Prerequisites
-- **Python 3.11+**
+- **Python 3.14+**
 - **Node.js 18+** (or 20+)
 - An **S3-compatible bucket** (AWS S3, MinIO, etc.)
 - A **Supabase** project with tables: `profiles`, `media_assets`, `jobs`, `memory_units`
@@ -117,8 +117,6 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Frontend Setup
@@ -160,16 +158,3 @@ Base path: `/api/v1`
 - `media_assets`: uploaded artifacts (file name, mime, bytes)
 - `jobs`: extraction queue entries
 - `memory_units`: extracted structured memories
-
-## Troubleshooting
-- **401/403 from Supabase**: check `SUPABASE_SERVICE_ROLE_KEY`.
-- **Upload failures**: confirm bucket permissions, CORS, and file size/type.
-- **Gemini errors**: confirm `google-genai` is installed and `GEMINI_API_KEY` set.
-- **No audio**: provide a voice ID or upload a sample through `/profiles/voice-clone`.
-
-## Notes
-- The extraction worker currently produces **one memory unit per asset** (MVP behavior).
-- Upload validation is enforced by both size and MIME type.
-
-## License
-This project is provided as-is. Add a license if you plan to distribute.
