@@ -53,8 +53,7 @@ class MemoryUnitOut(BaseModel):
     event_type: Optional[str] = None
     places: Optional[List[str]] = None  # Made optional from File 2
     dates: Optional[List[str]] = None  # Made optional from File 2
-    keywords: List[str]  # Kept from File 1
-    keywords_array: Optional[List[str]] = None  # Added from File 2
+    keywords_array: List[str]
 
 
 class MemoryUnitUpdateRequest(BaseModel):

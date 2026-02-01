@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+import tempfile
 from typing import Any, Dict, List, Optional
 
 from app.llm.gemini_client import GeminiClient
@@ -176,23 +177,24 @@ class ExtractionWorker:
             return self._extract_text_single_pass(media_asset, client)
 
         suffix = self._suffix_for_mime(media_asset.get("mime_type"))
-        temp_path = Path(f"/tmp/{media_asset['id']}{suffix}")
-        download_object_to_path(object_key, str(temp_path))
-        try:
-            if modality == "audio":
-                transcript = client.transcribe_media(str(temp_path), modality)
-                units = self._extract_from_transcript(transcript, modality, client)
-            else:
-                units = client.extract(
-                    file_path=str(temp_path),
-                    mime_type=media_asset.get("mime_type"),
-                    modality=modality,
-                )
-        finally:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir) / f"{media_asset['id']}{suffix}"
+            download_object_to_path(object_key, str(temp_path))
             try:
-                temp_path.unlink(missing_ok=True)
-            except Exception:
-                LOGGER.warning("Failed to delete temp file %s", temp_path)
+                if modality == "audio":
+                    transcript = client.transcribe_media(str(temp_path), modality)
+                    units = self._extract_from_transcript(transcript, modality, client)
+                else:
+                    units = client.extract(
+                        file_path=str(temp_path),
+                        mime_type=media_asset.get("mime_type"),
+                        modality=modality,
+                    )
+            finally:
+                try:
+                    temp_path.unlink(missing_ok=True)
+                except Exception:
+                    LOGGER.warning("Failed to delete temp file %s", temp_path)
 
         return self._build_results(media_asset, units)
 
@@ -200,15 +202,16 @@ class ExtractionWorker:
         self, media_asset: Dict[str, Any], client: GeminiClient
     ) -> ExtractionResult:
         object_key = media_asset.get("file_name")
-        temp_path = Path(f"/tmp/{media_asset['id']}.txt")
-        download_object_to_path(object_key, str(temp_path))
-        try:
-            content = temp_path.read_text(encoding="utf-8", errors="replace")
-        finally:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir) / f"{media_asset['id']}.txt"
+            download_object_to_path(object_key, str(temp_path))
             try:
-                temp_path.unlink(missing_ok=True)
-            except Exception:
-                LOGGER.warning("Failed to delete temp file %s", temp_path)
+                content = temp_path.read_text(encoding="utf-8", errors="replace")
+            finally:
+                try:
+                    temp_path.unlink(missing_ok=True)
+                except Exception:
+                    LOGGER.warning("Failed to delete temp file %s", temp_path)
 
         units = client.extract_from_text(content, "text")
         return self._build_results(media_asset, units)

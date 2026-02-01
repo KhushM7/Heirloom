@@ -61,9 +61,9 @@ def parse_list(values: list[str] | None, label: str) -> list[str]:
 
 
 def add_server_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--api", default="http://localhost:8000", help="API base URL")
+    parser.add_argument("--api", default="http://localhost:8001", help="API base URL")
     parser.add_argument("--host", default="0.0.0.0", help="Uvicorn host")
-    parser.add_argument("--port", type=int, default=8000, help="Uvicorn port")
+    parser.add_argument("--port", type=int, default=8001, help="Uvicorn port")
     parser.add_argument(
         "--server-timeout",
         type=int,
