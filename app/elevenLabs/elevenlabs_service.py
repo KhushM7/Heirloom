@@ -1,12 +1,15 @@
 """
 ElevenLabs service for voice cloning and text-to-speech
 """
-from elevenlabs.client import ElevenLabs
-from elevenlabs import VoiceSettings
-from .config import Config
 import os
 import base64
 import io
+from types import SimpleNamespace
+import requests
+
+from elevenlabs.client import ElevenLabs
+from elevenlabs import VoiceSettings
+from .config import Config
 
 
 class ElevenLabsService:
@@ -19,6 +22,45 @@ class ElevenLabsService:
 
         self.client = ElevenLabs(api_key=Config.ELEVENLABS_API_KEY)
         self.voice_settings_class = VoiceSettings
+
+    def _clone_voice(self, voice_name: str, files: list, description: str = ""):
+        """
+        Internal helper to clone a voice using the ElevenLabs SDK.
+
+        Supports multiple SDK versions by checking available methods.
+        """
+        if not Config.ELEVENLABS_API_KEY:
+            raise ValueError("ELEVENLABS_API_KEY is required to clone voices.")
+
+        voices = getattr(self.client, "voices", None)
+
+        if voices and hasattr(voices, "add"):
+            return voices.add(name=voice_name, files=files, description=description)
+
+        if voices and hasattr(voices, "create"):
+            return voices.create(name=voice_name, files=files, description=description)
+
+        if hasattr(self.client, "clone_voice"):
+            return self.client.clone_voice(name=voice_name, files=files, description=description)
+
+        response = requests.post(
+            "https://api.elevenlabs.io/v1/voices/add",
+            headers={"xi-api-key": Config.ELEVENLABS_API_KEY},
+            data={"name": voice_name, "description": description},
+            files=[("files", (file.name, file, "application/octet-stream")) for file in files],
+            timeout=60,
+        )
+        if not response.ok:
+            raise RuntimeError(
+                f"ElevenLabs voice clone failed: {response.status_code} {response.text}"
+            )
+
+        payload = response.json()
+        voice_id = payload.get("voice_id")
+        if not voice_id:
+            raise ValueError("ElevenLabs voice clone succeeded but no voice_id was returned.")
+
+        return SimpleNamespace(voice_id=voice_id)
 
     def clone_voice_from_bytes(self, voice_name: str, audio_data_list: list, description: str = "") -> str:
         """

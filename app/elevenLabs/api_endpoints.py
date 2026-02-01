@@ -7,6 +7,7 @@ Run with: uvicorn app.elevenLabs.main:app --reload
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List
+import uuid
 import io
 
 from .config import Config
@@ -35,6 +36,14 @@ def get_services(require_supabase: bool = True):
         supabase_service = SupabaseService()
 
     return elevenlabs_service, supabase_service
+
+
+def is_valid_uuid(user_id: str) -> bool:
+    try:
+        uuid.UUID(str(user_id))
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 @app.post("/api/voice/clone")
@@ -75,8 +84,12 @@ async def clone_voice_endpoint(
             description=voice_description
         )
 
-        # Store voice_id in Supabase
-        supabase_service.store_voice_id(user_id=user_id, voice_id=voice_id)
+        # Store voice_id in Supabase when the user ID matches expected UUID format.
+        if is_valid_uuid(user_id):
+            supabase_service.store_voice_id(user_id=user_id, voice_id=voice_id)
+            message = "Voice cloned and stored successfully"
+        else:
+            message = "Voice cloned successfully (skipped storing voice_id for non-UUID user_id)"
 
         return JSONResponse(
             status_code=200,
@@ -84,10 +97,12 @@ async def clone_voice_endpoint(
                 "success": True,
                 "voice_id": voice_id,
                 "user_id": user_id,
-                "message": "Voice cloned and stored successfully"
+                "message": message
             }
         )
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to clone voice: {str(e)}")
 
@@ -132,16 +147,22 @@ async def clone_voice_base64_endpoint(
             description=voice_description
         )
 
-        # Store voice_id in Supabase
-        supabase_service.store_voice_id(user_id=user_id, voice_id=voice_id)
+        # Store voice_id in Supabase when the user ID matches expected UUID format.
+        if is_valid_uuid(user_id):
+            supabase_service.store_voice_id(user_id=user_id, voice_id=voice_id)
+            message = "Voice cloned and stored successfully"
+        else:
+            message = "Voice cloned successfully (skipped storing voice_id for non-UUID user_id)"
 
         return {
             "success": True,
             "voice_id": voice_id,
             "user_id": user_id,
-            "message": "Voice cloned and stored successfully"
+            "message": message
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to clone voice: {str(e)}")
 
@@ -164,6 +185,8 @@ async def generate_speech_endpoint(
     elevenlabs_service, supabase_service = get_services()
 
     try:
+        if not is_valid_uuid(user_id):
+            raise ValueError("User ID must be a valid UUID.")
         # Get user's voice_id from Supabase
         voice_id = supabase_service.get_voice_id(user_id=user_id)
 
@@ -182,6 +205,8 @@ async def generate_speech_endpoint(
             }
         )
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate speech: {str(e)}")
 
@@ -219,6 +244,8 @@ async def generate_speech_with_voice_id_endpoint(
             }
         )
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate speech: {str(e)}")
 
@@ -237,6 +264,8 @@ async def get_user_voice_endpoint(user_id: str):
     _, supabase_service = get_services()
 
     try:
+        if not is_valid_uuid(user_id):
+            raise ValueError("User ID must be a valid UUID.")
         voice_id = supabase_service.get_voice_id(user_id=user_id)
 
         # Optionally get voice info from ElevenLabs
@@ -254,6 +283,8 @@ async def get_user_voice_endpoint(user_id: str):
             "voice_info": voice_info
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Voice not found: {str(e)}")
 
@@ -272,6 +303,8 @@ async def delete_user_voice_endpoint(user_id: str):
     elevenlabs_service, supabase_service = get_services()
 
     try:
+        if not is_valid_uuid(user_id):
+            raise ValueError("User ID must be a valid UUID.")
         # Get voice_id
         voice_id = supabase_service.get_voice_id(user_id=user_id)
 
@@ -288,6 +321,8 @@ async def delete_user_voice_endpoint(user_id: str):
             "voice_id": voice_id
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete voice: {str(e)}")
 
