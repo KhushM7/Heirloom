@@ -84,8 +84,12 @@ async def clone_voice_endpoint(
             description=voice_description
         )
 
-        # Store voice_id in Supabase
-        supabase_service.store_voice_id(user_id=user_id, voice_id=voice_id)
+        # Store voice_id in Supabase when the user ID matches expected UUID format.
+        if is_valid_uuid(user_id):
+            supabase_service.store_voice_id(user_id=user_id, voice_id=voice_id)
+            message = "Voice cloned and stored successfully"
+        else:
+            message = "Voice cloned successfully (skipped storing voice_id for non-UUID user_id)"
 
         return JSONResponse(
             status_code=200,
@@ -93,7 +97,7 @@ async def clone_voice_endpoint(
                 "success": True,
                 "voice_id": voice_id,
                 "user_id": user_id,
-                "message": "Voice cloned and stored successfully"
+                "message": message
             }
         )
 
@@ -144,14 +148,18 @@ async def clone_voice_base64_endpoint(
             description=voice_description
         )
 
-        # Store voice_id in Supabase
-        supabase_service.store_voice_id(user_id=user_id, voice_id=voice_id)
+        # Store voice_id in Supabase when the user ID matches expected UUID format.
+        if is_valid_uuid(user_id):
+            supabase_service.store_voice_id(user_id=user_id, voice_id=voice_id)
+            message = "Voice cloned and stored successfully"
+        else:
+            message = "Voice cloned successfully (skipped storing voice_id for non-UUID user_id)"
 
         return {
             "success": True,
             "voice_id": voice_id,
             "user_id": user_id,
-            "message": "Voice cloned and stored successfully"
+            "message": message
         }
 
     except ValueError as e:
