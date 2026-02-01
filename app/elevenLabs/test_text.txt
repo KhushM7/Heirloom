@@ -1,5 +1,0 @@
-Hello! This is a test of the text-to-speech functionality using your cloned voice.
-
-The ElevenLabs API allows us to generate natural-sounding speech that matches the characteristics of your voice.
-
-This technology can be used for various applications like audiobooks, virtual assistants, and personalized content creation.
