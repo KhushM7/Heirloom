@@ -2,7 +2,7 @@
 Supabase service for database operations
 """
 from supabase import create_client, Client
-from config import Config
+from .config import Config
 
 
 class SupabaseService:

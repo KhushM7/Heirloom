@@ -2,16 +2,16 @@
 FastAPI endpoint examples for ElevenLabs voice cloning and TTS
 
 Install FastAPI with: pip install fastapi uvicorn python-multipart
-Run with: uvicorn api_endpoints:app --reload
+Run with: uvicorn app.elevenLabs.main:app --reload
 """
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List
 import io
 
-from config import Config
-from elevenlabs_service import ElevenLabsService
-from supabase_service import SupabaseService
+from .config import Config
+from .elevenlabs_service import ElevenLabsService
+from .supabase_service import SupabaseService
 
 # Initialize FastAPI app
 app = FastAPI(title="ElevenLabs Voice Cloning API")
