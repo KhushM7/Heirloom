@@ -128,7 +128,6 @@ npm run dev
 
 Then visit:
 - Frontend: http://localhost:3000
-- Backend docs: http://localhost:8000/docs
 
 ## API Overview
 Base path: `/api/v1`
