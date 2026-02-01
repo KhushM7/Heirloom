@@ -4,8 +4,8 @@ import logging
 from datetime import datetime
 from pprint import pformat
 
-from app.api.schemas import RetrievedMemory
-from app.db.supabase_client import supabase
+from api.schemas import RetrievedMemory
+from db.supabase_client import supabase
 
 logger = logging.getLogger(__name__)
 

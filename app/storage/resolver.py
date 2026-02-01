@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from botocore.exceptions import ClientError
 
-from app.core.settings import settings
+from core.settings import settings
 
 # Explicit mime mapping for your allowed file types
 _MIME_BY_EXT: Dict[str, str] = {

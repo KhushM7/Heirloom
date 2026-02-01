@@ -8,10 +8,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from app.llm.gemini_client import GeminiClient
+from llm.gemini_client import GeminiClient
 from fastapi import HTTPException
 
-from data_extraction import (
+from core.data_extraction import (
     MAX_UPLOAD_BYTES,
     SUPPORTED_MIME_TYPES,
     delete_object,

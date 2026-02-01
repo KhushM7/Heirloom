@@ -3,10 +3,10 @@ import logging
 from fastapi import APIRouter, HTTPException
 from postgrest.exceptions import APIError
 
-from app.api.schemas import AskRequest, AskResponse
-from app.core.settings import settings
-from app.llm.gemini_client import GeminiClient
-from app.retrieval.retrieve import resolve_source_urls, retrieve_context
+from api.schemas import AskRequest, AskResponse
+from core.settings import settings
+from llm.gemini_client import GeminiClient
+from retrieval.retrieve import resolve_source_urls, retrieve_context
 
 
 router = APIRouter(prefix="/profiles", tags=["qa"])

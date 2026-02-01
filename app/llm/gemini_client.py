@@ -9,8 +9,8 @@ from typing import Any, Dict, List
 
 from fastapi import HTTPException, status
 
-from app.core.settings import settings
-from app.llm.prompts import (
+from core.settings import settings
+from llm.prompts import (
     EVENT_TYPES,
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,

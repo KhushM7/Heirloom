@@ -3,11 +3,11 @@ from __future__ import annotations
 import logging
 from pprint import pformat
 
-from app.api.schemas import ContextPack, RetrievedMemory
-from app.core.settings import settings
-from app.db.queries import retrieve_memory_units
-from app.retrieval.keywords import extract_keywords
-from app.storage.resolver import resolve_public_url
+from api.schemas import ContextPack, RetrievedMemory
+from core.settings import settings
+from db.queries import retrieve_memory_units
+from retrieval.keywords import extract_keywords
+from storage.resolver import resolve_public_url
 
 logger = logging.getLogger(__name__)
 

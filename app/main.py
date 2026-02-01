@@ -3,9 +3,9 @@ from os import getenv
 
 from fastapi import FastAPI
 
-from app.api.main import api_router
-from app.core.extraction_worker import ExtractionWorker
-from app.core.settings import settings
+from api.main import api_router
+from core.extraction_worker import ExtractionWorker
+from core.settings import settings
 
 worker = ExtractionWorker()
 
@@ -23,6 +23,14 @@ app = FastAPI(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+@app.on_event("startup")
+def start_extraction_worker() -> None:
+    worker.start()
+
+
+@app.on_event("shutdown")
+def stop_extraction_worker() -> None:
+    worker.stop()
 
 @app.get("/api/v1/worker/status")
 def worker_status() -> dict:
