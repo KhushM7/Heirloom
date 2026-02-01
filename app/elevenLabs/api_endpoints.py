@@ -2,29 +2,39 @@
 FastAPI endpoint examples for ElevenLabs voice cloning and TTS
 
 Install FastAPI with: pip install fastapi uvicorn python-multipart
-Run with: uvicorn api_endpoints:app --reload
+Run with: uvicorn app.elevenLabs.main:app --reload
 """
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List
 import io
 
-from config import Config
-from elevenlabs_service import ElevenLabsService
-from supabase_service import SupabaseService
+from .config import Config
+from .elevenlabs_service import ElevenLabsService
+from .supabase_service import SupabaseService
 
 # Initialize FastAPI app
 app = FastAPI(title="ElevenLabs Voice Cloning API")
 
-# Initialize services
-try:
-    Config.validate()
-    elevenlabs_service = ElevenLabsService()
-    supabase_service = SupabaseService()
-except Exception as e:
-    print(f"Warning: Service initialization failed: {e}")
-    elevenlabs_service = None
-    supabase_service = None
+elevenlabs_service = None
+supabase_service = None
+
+
+def get_services(require_supabase: bool = True):
+    global elevenlabs_service, supabase_service
+
+    try:
+        Config.validate()
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=f"Configuration error: {str(e)}")
+
+    if elevenlabs_service is None:
+        elevenlabs_service = ElevenLabsService()
+
+    if require_supabase and supabase_service is None:
+        supabase_service = SupabaseService()
+
+    return elevenlabs_service, supabase_service
 
 
 @app.post("/api/voice/clone")
@@ -46,8 +56,7 @@ async def clone_voice_endpoint(
     Returns:
         JSON with voice_id and success status
     """
-    if not elevenlabs_service or not supabase_service:
-        raise HTTPException(status_code=500, detail="Services not initialized")
+    elevenlabs_service, supabase_service = get_services()
 
     try:
         # Read all uploaded files into memory
@@ -110,8 +119,7 @@ async def clone_voice_base64_endpoint(
         ]
     }
     """
-    if not elevenlabs_service or not supabase_service:
-        raise HTTPException(status_code=500, detail="Services not initialized")
+    elevenlabs_service, supabase_service = get_services()
 
     if not audio_files:
         raise HTTPException(status_code=400, detail="No audio files provided")
@@ -153,8 +161,7 @@ async def generate_speech_endpoint(
     Returns:
         Audio file (MP3) as streaming response
     """
-    if not elevenlabs_service or not supabase_service:
-        raise HTTPException(status_code=500, detail="Services not initialized")
+    elevenlabs_service, supabase_service = get_services()
 
     try:
         # Get user's voice_id from Supabase
@@ -194,8 +201,7 @@ async def generate_speech_with_voice_id_endpoint(
     Returns:
         Audio file (MP3) as streaming response
     """
-    if not elevenlabs_service:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+    elevenlabs_service, _ = get_services(require_supabase=False)
 
     try:
         # Generate speech as bytes
@@ -228,8 +234,7 @@ async def get_user_voice_endpoint(user_id: str):
     Returns:
         JSON with voice_id and profile info
     """
-    if not supabase_service:
-        raise HTTPException(status_code=500, detail="Service not initialized")
+    _, supabase_service = get_services()
 
     try:
         voice_id = supabase_service.get_voice_id(user_id=user_id)
@@ -264,8 +269,7 @@ async def delete_user_voice_endpoint(user_id: str):
     Returns:
         JSON with success status
     """
-    if not elevenlabs_service or not supabase_service:
-        raise HTTPException(status_code=500, detail="Services not initialized")
+    elevenlabs_service, supabase_service = get_services()
 
     try:
         # Get voice_id
@@ -291,10 +295,13 @@ async def delete_user_voice_endpoint(user_id: str):
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    elevenlabs_ready = elevenlabs_service is not None
+    supabase_ready = supabase_service is not None
+
     return {
         "status": "healthy",
-        "elevenlabs_configured": elevenlabs_service is not None,
-        "supabase_configured": supabase_service is not None
+        "elevenlabs_configured": elevenlabs_ready,
+        "supabase_configured": supabase_ready
     }
 
 

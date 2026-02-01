@@ -1,9 +1,7 @@
 """
 ElevenLabs service for voice cloning and text-to-speech
 """
-from elevenlabs.client import ElevenLabs
-from elevenlabs import VoiceSettings
-from config import Config
+from .config import Config
 import os
 import base64
 import io
@@ -14,7 +12,26 @@ class ElevenLabsService:
 
     def __init__(self):
         """Initialize ElevenLabs client"""
+        from elevenlabs.client import ElevenLabs
+        from elevenlabs import VoiceSettings
+
         self.client = ElevenLabs(api_key=Config.ELEVENLABS_API_KEY)
+        self.voice_settings_class = VoiceSettings
+
+    def _clone_voice(self, voice_name: str, files: list, description: str) -> str:
+        if hasattr(self.client, "clone"):
+            return self.client.clone(name=voice_name, description=description, files=files)
+
+        voices_client = getattr(self.client, "voices", None)
+        if voices_client is None:
+            raise AttributeError("ElevenLabs client has no voices interface")
+
+        for method_name in ("clone", "create", "add"):
+            method = getattr(voices_client, method_name, None)
+            if callable(method):
+                return method(name=voice_name, description=description, files=files)
+
+        raise AttributeError("ElevenLabs client has no supported voice cloning method")
 
     def clone_voice_from_bytes(self, voice_name: str, audio_data_list: list, description: str = "") -> str:
         """
@@ -79,19 +96,22 @@ class ElevenLabsService:
                 raise ValueError("No audio files provided")
 
             # Clone the voice using the file-like objects
-            voice = self.client.clone(
-                name=voice_name,
-                description=description,
-                files=files
-            )
+            voice = self._clone_voice(voice_name=voice_name, files=files, description=description)
+            voice_id = getattr(voice, "voice_id", None) or getattr(voice, "id", None)
+            if not voice_id:
+                raise ValueError("Voice cloning succeeded but voice_id was not returned")
 
             print(f"✓ Voice cloned successfully: {voice_name}")
-            print(f"✓ Voice ID: {voice.voice_id}")
+            print(f"✓ Voice ID: {voice_id}")
 
-            return voice.voice_id
+            return voice_id
 
         except Exception as e:
             raise Exception(f"Failed to clone voice from bytes: {str(e)}")
+        finally:
+            for f in files:
+                if not f.closed:
+                    f.close()
 
     def clone_voice(self, voice_name: str, audio_files: list[str], description: str = "") -> str:
         """
@@ -114,27 +134,22 @@ class ElevenLabsService:
                 files.append(open(file_path, 'rb'))
 
             # Clone the voice
-            voice = self.client.clone(
-                name=voice_name,
-                description=description,
-                files=files
-            )
-
-            # Close file handles
-            for f in files:
-                f.close()
+            voice = self._clone_voice(voice_name=voice_name, files=files, description=description)
+            voice_id = getattr(voice, "voice_id", None) or getattr(voice, "id", None)
+            if not voice_id:
+                raise ValueError("Voice cloning succeeded but voice_id was not returned")
 
             print(f"✓ Voice cloned successfully: {voice_name}")
-            print(f"✓ Voice ID: {voice.voice_id}")
+            print(f"✓ Voice ID: {voice_id}")
 
-            return voice.voice_id
+            return voice_id
 
         except Exception as e:
-            # Close any open file handles
+            raise Exception(f"Failed to clone voice: {str(e)}")
+        finally:
             for f in files:
                 if not f.closed:
                     f.close()
-            raise Exception(f"Failed to clone voice: {str(e)}")
 
     def text_to_speech(self, text: str, voice_id: str, output_path: str = "output.mp3") -> str:
         """
@@ -154,7 +169,7 @@ class ElevenLabsService:
                 text=text,
                 voice=voice_id,
                 model="eleven_multilingual_v2",  # Best model for cloned voices
-                voice_settings=VoiceSettings(
+                voice_settings=self.voice_settings_class(
                     stability=0.5,
                     similarity_boost=0.75,
                     style=0.0,
@@ -190,7 +205,7 @@ class ElevenLabsService:
                 text=text,
                 voice=voice_id,
                 model="eleven_multilingual_v2",
-                voice_settings=VoiceSettings(
+                voice_settings=self.voice_settings_class(
                     stability=0.5,
                     similarity_boost=0.75,
                     style=0.0,

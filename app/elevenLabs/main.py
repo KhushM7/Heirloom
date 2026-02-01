@@ -1,11 +1,14 @@
 """
-Main application for ElevenLabs voice cloning and TTS integration
+FastAPI entrypoint for ElevenLabs voice cloning and TTS integration.
 """
-from config import Config
-from elevenlabs_service import ElevenLabsService
-from supabase_service import SupabaseService
-import base64
-import io
+from fastapi import FastAPI
+
+from .api_endpoints import app as api_app
+from .config import Config
+from .elevenlabs_service import ElevenLabsService
+from .supabase_service import SupabaseService
+
+app: FastAPI = api_app
 
 
 def read_text_from_file(file_path: str) -> str:
@@ -254,4 +257,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import uvicorn
+
+    uvicorn.run("app.elevenLabs.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -1,9 +1,9 @@
 """
 Example usage scripts for individual functions
 """
-from config import Config
-from elevenlabs_service import ElevenLabsService
-from supabase_service import SupabaseService
+from .config import Config
+from .elevenlabs_service import ElevenLabsService
+from .supabase_service import SupabaseService
 
 
 def example_clone_voice():
