@@ -1,6 +1,8 @@
 """
 ElevenLabs service for voice cloning and text-to-speech
 """
+from elevenlabs.client import ElevenLabs
+from elevenlabs import VoiceSettings
 from .config import Config
 import os
 import base64
@@ -17,21 +19,6 @@ class ElevenLabsService:
 
         self.client = ElevenLabs(api_key=Config.ELEVENLABS_API_KEY)
         self.voice_settings_class = VoiceSettings
-
-    def _clone_voice(self, voice_name: str, files: list, description: str) -> str:
-        if hasattr(self.client, "clone"):
-            return self.client.clone(name=voice_name, description=description, files=files)
-
-        voices_client = getattr(self.client, "voices", None)
-        if voices_client is None:
-            raise AttributeError("ElevenLabs client has no voices interface")
-
-        for method_name in ("clone", "create", "add"):
-            method = getattr(voices_client, method_name, None)
-            if callable(method):
-                return method(name=voice_name, description=description, files=files)
-
-        raise AttributeError("ElevenLabs client has no supported voice cloning method")
 
     def clone_voice_from_bytes(self, voice_name: str, audio_data_list: list, description: str = "") -> str:
         """
