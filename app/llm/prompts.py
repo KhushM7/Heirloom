@@ -32,12 +32,18 @@ Existing keywords (JSON array):
 
 Task:
 1) Infer up to {top_n} short keywords/phrases from the question (lowercase, 1-3 words).
-2) From the existing keywords list, select only those that are exact matches or near-exact matches (same root/lemma).
+2) For each existing keyword, compare it to the inferred question keywords and rate their relatedness on a 1-10 scale:
+   - 1 = no relation
+   - 10 = synonyms / same concept
+3) Select matches where relatedness is 8 or higher.
 
 Rules:
 - Output keywords MUST be items from the existing list.
 - Do NOT return broad or loosely related terms.
-- Return JSON only: {{"keywords": []}}
+- Return JSON only with:
+  - matches: array of objects {{"keyword": "<existing keyword>", "score": <1-10>, "question_keyword": "<best-matching question keyword>"}}
+  - keywords: array of matched existing keywords (score >= 8)
+Example: {{"matches":[{{"keyword":"wedding","score":9,"question_keyword":"love"}}],"keywords":["wedding"]}}
 """
 
 # Extraction configuration

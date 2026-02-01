@@ -25,7 +25,9 @@ async def ask_profile_question(profile_id: str, payload: AskRequest) -> AskRespo
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured.")
 
     try:
-        context_pack, retrieved = retrieve_context(profile_id, payload.question)
+        context_pack, retrieved, keyword_matches = retrieve_context(
+            profile_id, payload.question
+        )
     except APIError as exc:
         logger.exception("Supabase retrieval failed.")
         raise HTTPException(

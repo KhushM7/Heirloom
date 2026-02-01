@@ -31,25 +31,48 @@ def build_context_pack(question: str, retrieved: list[RetrievedMemory]) -> Conte
     return ContextPack(question=question, memories=memories)
 
 
-def retrieve_context(profile_id: str, question: str) -> tuple[ContextPack, list[RetrievedMemory]]:
+def retrieve_context(
+    profile_id: str, question: str
+) -> tuple[ContextPack, list[RetrievedMemory], list[dict]]:
     existing_keywords = list_profile_keywords(profile_id)
     extraction = extract_keywords(question, existing_keywords=existing_keywords)
     keywords = extraction["keywords"]
     event_types = extraction["event_types"]
+    keyword_matches = extraction.get("keyword_matches", [])
     print("=== Retrieval Debug: Keyword Extraction ===")
     print(f"Question: {question}")
     print(f"Keywords: {keywords}")
     print(f"Matched tags/event types: {event_types}")
+    if keyword_matches:
+        print("Keyword matches:")
+        for match in keyword_matches:
+            keyword = match.get("keyword")
+            score = match.get("score")
+            question_keyword = match.get("question_keyword")
+            if keyword is None or score is None:
+                continue
+            score_display = f"{int(round(float(score))):d}/10"
+            if question_keyword:
+                print(f"  - {keyword} ← {question_keyword}: {score_display}")
+            else:
+                print(f"  - {keyword}: {score_display}")
+    else:
+        print("Keyword matches: []")
     logger.info(
         "Retrieval keyword extraction complete.",
-        extra={"question": question, "keywords": keywords, "event_types": event_types},
+        extra={
+            "question": question,
+            "keywords": keywords,
+            "event_types": event_types,
+            "keyword_matches": keyword_matches,
+        },
     )
     retrieved = retrieve_memory_units(
         profile_id, keywords, event_types, settings.DEFAULT_TOP_K
     )
 
     context_pack = build_context_pack(question, retrieved)
-    return context_pack, retrieved
+    return context_pack, retrieved, keyword_matches
 
 
 def resolve_source_urls(retrieved: list[RetrievedMemory]) -> list[str]:

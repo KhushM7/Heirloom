@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150">
+  <defs>
+    <style>
+      .cls-1 { fill: #3a5a40; } /* Deep Forest Green */
+      .cls-2 { fill: #d4af37; } /* Antique Gold */
+      .cls-3 { font-family: serif; font-weight: bold; font-size: 24px; fill: #3a5a40; }
+    </style>
+  </defs>
+  <g id="heirloom-logo">
+    <circle class="cls-2" cx="150" cy="60" r="45" opacity="0.2"/>
+    <circle class="cls-1" cx="150" cy="60" r="40" fill="none" stroke="#3a5a40" stroke-width="2"/>
+    
+    <path class="cls-1" d="M150,25 C150,25 130,45 130,70 C130,85 140,95 150,95 C160,95 170,85 170,70 C170,45 150,25 150,25 Z M145,70 C145,60 148,55 150,50 C152,55 155,60 155,70 C155,78 152,82 150,82 C148,82 145,78 145,70 Z" />
+    <path class="cls-2" d="M150,95 C150,95 135,105 135,115 C135,120 140,125 150,125 C160,125 165,120 165,115 C165,105 150,95 150,95 Z M142,115 C142,112 145,110 150,110 C155,110 158,112 158,115 C158,118 155,120 150,120 C145,120 142,118 142,115 Z"/>
+    <path class="cls-1" d="M130,70 Q120,60 120,50 M170,70 Q180,60 180,50" stroke="#3a5a40" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+    <text x="150" y="145" text-anchor="middle" class="cls-3">HEIRLOOM</text>
+  </g>
+</svg>

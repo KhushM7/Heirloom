@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AmbientParticles } from "@/components/ambient-particles";
@@ -37,8 +38,18 @@ export default function HomePage() {
       {/* Header */}
       <header className="relative z-20 py-6 px-6">
         <nav className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="font-serif text-xl text-amber-100">
-            Heirloom
+          <Link
+            href="/"
+            className="font-serif text-xl text-amber-100 flex items-center gap-3"
+          >
+            <Image
+              src="/logo.svg"
+              alt="Heirloom logo"
+              width={100}
+              height={100}
+              className="h-25 w-25"
+              priority
+            />
           </Link>
           <div className="flex items-center gap-6">
             <Link

@@ -77,7 +77,7 @@ class GeminiClient:
 
     def match_keywords(
         self, question: str, existing_keywords: list[str], top_n: int = 8
-    ) -> list[str]:
+    ) -> dict:
         """Match question-derived keywords to existing keyword inventory."""
         existing_keywords_json = json.dumps(existing_keywords, ensure_ascii=False)
         prompt = KEYWORD_MATCH_USER_PROMPT_TEMPLATE.format(
@@ -98,10 +98,18 @@ class GeminiClient:
 
         text = getattr(response, "text", "") or ""
         parsed = _parse_json_response(text) or {}
+        if not isinstance(parsed, dict):
+            return {"keywords": [], "matches": []}
         keywords = parsed.get("keywords", [])
+        matches = parsed.get("matches", [])
         if not isinstance(keywords, list):
-            return []
-        return [word for word in keywords if isinstance(word, str)]
+            keywords = []
+        if not isinstance(matches, list):
+            matches = []
+        return {
+            "keywords": [word for word in keywords if isinstance(word, str)],
+            "matches": [item for item in matches if isinstance(item, dict)],
+        }
 
     def extract_from_text(self, text: str, modality: str) -> List[ExtractedUnit]:
         """Extract memory units from text content."""
