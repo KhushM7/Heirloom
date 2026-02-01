@@ -83,19 +83,22 @@ class ElevenLabsService:
                 raise ValueError("No audio files provided")
 
             # Clone the voice using the file-like objects
-            voice = self.client.clone(
-                name=voice_name,
-                description=description,
-                files=files
-            )
+            voice = self._clone_voice(voice_name=voice_name, files=files, description=description)
+            voice_id = getattr(voice, "voice_id", None) or getattr(voice, "id", None)
+            if not voice_id:
+                raise ValueError("Voice cloning succeeded but voice_id was not returned")
 
             print(f"✓ Voice cloned successfully: {voice_name}")
-            print(f"✓ Voice ID: {voice.voice_id}")
+            print(f"✓ Voice ID: {voice_id}")
 
-            return voice.voice_id
+            return voice_id
 
         except Exception as e:
             raise Exception(f"Failed to clone voice from bytes: {str(e)}")
+        finally:
+            for f in files:
+                if not f.closed:
+                    f.close()
 
     def clone_voice(self, voice_name: str, audio_files: list[str], description: str = "") -> str:
         """
@@ -118,27 +121,22 @@ class ElevenLabsService:
                 files.append(open(file_path, 'rb'))
 
             # Clone the voice
-            voice = self.client.clone(
-                name=voice_name,
-                description=description,
-                files=files
-            )
-
-            # Close file handles
-            for f in files:
-                f.close()
+            voice = self._clone_voice(voice_name=voice_name, files=files, description=description)
+            voice_id = getattr(voice, "voice_id", None) or getattr(voice, "id", None)
+            if not voice_id:
+                raise ValueError("Voice cloning succeeded but voice_id was not returned")
 
             print(f"✓ Voice cloned successfully: {voice_name}")
-            print(f"✓ Voice ID: {voice.voice_id}")
+            print(f"✓ Voice ID: {voice_id}")
 
-            return voice.voice_id
+            return voice_id
 
         except Exception as e:
-            # Close any open file handles
+            raise Exception(f"Failed to clone voice: {str(e)}")
+        finally:
             for f in files:
                 if not f.closed:
                     f.close()
-            raise Exception(f"Failed to clone voice: {str(e)}")
 
     def text_to_speech(self, text: str, voice_id: str, output_path: str = "output.mp3") -> str:
         """
