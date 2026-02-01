@@ -8,7 +8,12 @@ import { AmbientParticles } from "@/components/ambient-particles";
 import { AncestorPresence } from "@/components/ancestor-presence";
 import { ImmersiveTranscription } from "@/components/immersive-transcription";
 import { MemorySourceDisplay } from "@/components/memory-source-display";
-import { askQuestion, createProfile, AskResponse } from "@/lib/api";
+import {
+  askQuestionWithVoice,
+  cloneVoiceSample,
+  createProfile,
+  AskResponse,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/date-picker";
 import { useProfile } from "@/lib/profile-context";
@@ -29,9 +34,16 @@ export default function DiscoverPage() {
   const [showQuestionBar, setShowQuestionBar] = useState(true);
   const [profileError, setProfileError] = useState("");
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [voiceSample, setVoiceSample] = useState<File | null>(null);
+  const [voiceError, setVoiceError] = useState("");
+  const [isCloningVoice, setIsCloningVoice] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const restoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<{
+    data: string;
+    mime: string;
+  } | null>(null);
   const displayName = profileName || "Ancestor";
 
   useEffect(() => {
@@ -62,11 +74,36 @@ export default function DiscoverPage() {
     setSessionState("connecting");
     setProfileError("");
     setIsCreatingProfile(true);
+    setVoiceError("");
+    setIsCloningVoice(false);
+
+    let voiceId: string | undefined;
+    if (voiceSample) {
+      try {
+        setIsCloningVoice(true);
+        const voiceResponse = await cloneVoiceSample(
+          voiceSample,
+          profileNameInput.trim()
+        );
+        voiceId = voiceResponse.voice_id;
+      } catch (error) {
+        setVoiceError(
+          error instanceof Error ? error.message : "Failed to clone voice."
+        );
+        setSessionState("intro");
+        setIsCreatingProfile(false);
+        setIsCloningVoice(false);
+        return;
+      } finally {
+        setIsCloningVoice(false);
+      }
+    }
 
     try {
       const created = await createProfile({
         name: profileNameInput.trim(),
         date_of_birth: profileDobInput.trim() || undefined,
+        voice_id: voiceId,
       });
       setProfileId(created.id);
       setProfileName(created.name || profileNameInput.trim());
@@ -127,9 +164,30 @@ export default function DiscoverPage() {
   }, []);
 
   const playAudio = useCallback(
-    async (text: string) => {
+    async (text: string, audioData?: string, audioMime?: string) => {
       setIsSpeaking(true);
       setHasSpoken(false);
+
+      if (audioData) {
+        try {
+          const mime = audioMime || "audio/mpeg";
+          const audio = new Audio(`data:${mime};base64,${audioData}`);
+          audioRef.current = audio;
+          audio.onended = () => {
+            setIsSpeaking(false);
+            setHasSpoken(true);
+          };
+          audio.onerror = () => {
+            audioRef.current = null;
+            fallbackToWebSpeech(text);
+          };
+          await audio.play();
+          return;
+        } catch {
+          audioRef.current = null;
+        }
+      }
+
       fallbackToWebSpeech(text);
     },
     [fallbackToWebSpeech]
@@ -154,9 +212,20 @@ export default function DiscoverPage() {
     setIsSpeaking(false);
 
     try {
-      const response = await askQuestion(profileId, userQuestion);
-      setCurrentAnswer(response);
-      await playAudio(response.answer_text);
+      const response = await askQuestionWithVoice(profileId, userQuestion);
+      setCurrentAnswer({
+        answer_text: response.answer_text,
+        source_urls: response.source_urls,
+      });
+      if (response.audio_base64) {
+        setCurrentAudio({
+          data: response.audio_base64,
+          mime: response.audio_mime_type || "audio/mpeg",
+        });
+      } else {
+        setCurrentAudio(null);
+      }
+      await playAudio(response.answer_text, response.audio_base64, response.audio_mime_type);
     } catch {
       const fallbackAnswer: AskResponse = {
         answer_text:
@@ -164,6 +233,7 @@ export default function DiscoverPage() {
         source_urls: [],
       };
       setCurrentAnswer(fallbackAnswer);
+      setCurrentAudio(null);
       await playAudio(fallbackAnswer.answer_text);
     } finally {
       setIsLoading(false);
@@ -177,7 +247,11 @@ export default function DiscoverPage() {
         audioRef.current = null;
       }
       window.speechSynthesis?.cancel();
-      playAudio(currentAnswer.answer_text);
+      if (currentAudio) {
+        playAudio(currentAnswer.answer_text, currentAudio.data, currentAudio.mime);
+      } else {
+        playAudio(currentAnswer.answer_text);
+      }
     }
   };
 
@@ -328,9 +402,43 @@ export default function DiscoverPage() {
                   placeholder="Date of birth (optional)"
                 />
 
+                <div className="space-y-2">
+                  <label className="block text-xs uppercase tracking-[0.2em] text-amber-200/40 font-serif">
+                    Voice Sample (optional)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setVoiceSample(file);
+                        setVoiceError("");
+                      }}
+                      className={cn(
+                        "w-full text-xs text-amber-100/70",
+                        "file:mr-3 file:py-2 file:px-4 file:rounded-md",
+                        "file:border file:border-amber-200/20 file:bg-stone-900/50",
+                        "file:text-amber-100/80 file:font-serif file:text-xs",
+                        "hover:file:bg-stone-900/70 transition"
+                      )}
+                    />
+                  </div>
+                  {voiceSample && (
+                    <p className="text-xs text-amber-200/50 font-serif">
+                      Selected: {voiceSample.name}
+                    </p>
+                  )}
+                  {voiceError && (
+                    <p className="text-xs text-red-300/80">{voiceError}</p>
+                  )}
+                </div>
+
                 <Button
                   type="submit"
-                  disabled={!profileNameInput.trim() || isCreatingProfile}
+                  disabled={
+                    !profileNameInput.trim() || isCreatingProfile || isCloningVoice
+                  }
                   className={cn(
                     "w-full h-14 text-lg font-serif tracking-wide rounded-lg",
                     "bg-gradient-to-r from-amber-900/60 via-amber-800/70 to-amber-900/60",
@@ -340,7 +448,11 @@ export default function DiscoverPage() {
                     "shadow-lg shadow-amber-900/20"
                   )}
                 >
-                  {isCreatingProfile ? "Connecting..." : "Light the Candle"}
+                  {isCloningVoice
+                    ? "Capturing Voice..."
+                    : isCreatingProfile
+                    ? "Connecting..."
+                    : "Light the Candle"}
                 </Button>
                 {profileError && (
                   <p className="text-xs text-red-300/80">{profileError}</p>
@@ -517,7 +629,11 @@ export default function DiscoverPage() {
         {/* Response area - flows naturally */}
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-6">
           {currentAnswer ? (
-            <div className="w-full max-w-2xl space-y-8">
+            <div className="w-full max-w-2xl space-y-4">
+              {!isSpeaking && hasSpoken && currentAnswer.source_urls && currentAnswer.source_urls.length > 0 && (
+                <MemorySourceDisplay sources={currentAnswer.source_urls} />
+              )}
+
               <ImmersiveTranscription
                 text={currentAnswer.answer_text}
                 isPlaying={isSpeaking}
@@ -540,9 +656,6 @@ export default function DiscoverPage() {
                     </button>
                   </div>
 
-                  {currentAnswer.source_urls && currentAnswer.source_urls.length > 0 && (
-                    <MemorySourceDisplay sources={currentAnswer.source_urls} />
-                  )}
                 </div>
               )}
             </div>

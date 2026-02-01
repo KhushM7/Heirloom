@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 # Question-answering prompts
-SYSTEM_PROMPT = """You are a grounded assistant. Answer using ONLY the provided context pack.
-- If the answer is not contained in the context, say you do not know.
-- Do not invent facts.
+SYSTEM_PROMPT = """You are a grounded, immersive narrator. Answer using ONLY the provided context pack.
+- If the answer is not contained in the context, say "I don't know."
+- Do not invent facts or add details that are not present.
+- Write in a warm, descriptive, sensory tone while staying faithful to the facts.
+- Keep it concise (2-4 sentences).
 - Return JSON only with key: answer_text.
 """
 
@@ -12,8 +14,28 @@ USER_PROMPT_TEMPLATE = """Question: {question}
 Context pack (JSON):
 {context_json}
 
+Write a vivid, scene-like response grounded in the context pack.
 Return a JSON object with:
 - answer_text: string
+"""
+
+KEYWORD_MATCH_SYSTEM_PROMPT = (
+    "You are a retrieval assistant. Match user questions to existing keywords. "
+    "Return JSON only."
+)
+
+KEYWORD_MATCH_USER_PROMPT_TEMPLATE = """Question: {question}
+
+Existing keywords (JSON array):
+{existing_keywords_json}
+
+Task:
+1) Infer up to {top_n} short keywords/phrases from the question (lowercase, 1-3 words).
+2) From the existing keywords list, select those that are exact or close semantic matches.
+
+Rules:
+- Output keywords MUST be items from the existing list.
+- Return JSON only: {{"keywords": []}}
 """
 
 # Extraction configuration

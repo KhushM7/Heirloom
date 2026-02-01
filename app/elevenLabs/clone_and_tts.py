@@ -15,6 +15,28 @@ MODEL_ID = "eleven_multilingual_v2"
 OUTPUT_FORMAT = "mp3_44100_128"
 
 
+def get_client() -> ElevenLabs:
+    load_dotenv()
+    api_key = os.getenv("ELEVENLABS_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing ELEVENLABS_API_KEY in environment (.env).")
+    return ElevenLabs(api_key=api_key)
+
+
+def resolve_voice_id(provided_voice_id: str | None = None) -> str:
+    if provided_voice_id:
+        return provided_voice_id
+    env_voice_id = os.getenv("ELEVENLABS_VOICE_ID")
+    if env_voice_id:
+        return env_voice_id
+    cache = Path(VOICE_ID_CACHE)
+    if cache.exists():
+        cached = cache.read_text(encoding="utf-8").strip()
+        if cached:
+            return cached
+    raise RuntimeError("Missing voice_id. Provide ELEVENLABS_VOICE_ID or cache one.")
+
+
 def clone_voice(client: ElevenLabs, sample_path: str, name: str = "My IVC Voice") -> str:
     p = Path(sample_path)
     if not p.exists() or not p.is_file():
@@ -26,6 +48,18 @@ def clone_voice(client: ElevenLabs, sample_path: str, name: str = "My IVC Voice"
     voice = client.voices.ivc.create(
         name=name,
         # You can pass multiple files for better quality; start with one.
+        files=[BytesIO(audio_bytes)],
+    )
+    return voice.voice_id
+
+
+def clone_voice_from_bytes(
+    client: ElevenLabs, audio_bytes: bytes, name: str = "My IVC Voice"
+) -> str:
+    if not audio_bytes:
+        raise ValueError("Audio sample is empty.")
+    voice = client.voices.ivc.create(
+        name=name,
         files=[BytesIO(audio_bytes)],
     )
     return voice.voice_id
@@ -45,6 +79,20 @@ def tts_to_file(client: ElevenLabs, voice_id: str, text: str, out_path: str) -> 
         for chunk in audio_stream:
             if chunk:
                 f.write(chunk)
+
+
+def tts_to_bytes(client: ElevenLabs, voice_id: str, text: str) -> bytes:
+    audio_stream = client.text_to_speech.stream(
+        voice_id=voice_id,
+        text=text,
+        model_id=MODEL_ID,
+        output_format=OUTPUT_FORMAT,
+    )
+    output = bytearray()
+    for chunk in audio_stream:
+        if chunk:
+            output.extend(chunk)
+    return bytes(output)
 
 
 def main(sample_path: str):

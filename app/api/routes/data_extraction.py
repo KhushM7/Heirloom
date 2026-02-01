@@ -216,10 +216,25 @@ def create_profile(payload: ProfileCreateRequest) -> ProfileOut:
                 },
             )
             if existing:
+                existing_profile = existing[0]
+                if payload.voice_id and not existing_profile.get("voice_id"):
+                    try:
+                        updated = supabase_update(
+                            "profiles",
+                            {"voice_id": payload.voice_id},
+                            {"id": f"eq.{existing_profile.get('id')}"},
+                        )
+                        if updated:
+                            existing_profile = updated[0]
+                    except HTTPException as exc:
+                        logger.warning(
+                            "Supabase update failed for profiles voice_id: %s", exc.detail
+                        )
                 return ProfileOut(
-                    id=str(existing[0].get("id")),
-                    name=existing[0].get("name") or payload.name,
-                    date_of_birth=existing[0].get("date_of_birth"),
+                    id=str(existing_profile.get("id")),
+                    name=existing_profile.get("name") or payload.name,
+                    date_of_birth=existing_profile.get("date_of_birth"),
+                    voice_id=existing_profile.get("voice_id") or payload.voice_id,
                 )
         except HTTPException:
             # If the profiles table doesn't have a name column, fall back to create.
@@ -231,23 +246,34 @@ def create_profile(payload: ProfileCreateRequest) -> ProfileOut:
         insert_payload["name"] = payload.name
     if payload.date_of_birth:
         insert_payload["date_of_birth"] = payload.date_of_birth.isoformat()
+    if payload.voice_id:
+        insert_payload["voice_id"] = payload.voice_id
 
     try:
         created = supabase_insert("profiles", insert_payload)
     except HTTPException:
         # Retry with progressively smaller payloads to handle missing columns.
-        fallback_payload = {"id": profile_id}
+        fallback_payloads = []
+        if payload.voice_id:
+            payload_with_voice = {"id": profile_id, "voice_id": payload.voice_id}
+            if payload.name:
+                payload_with_voice["name"] = payload.name
+            if payload.date_of_birth:
+                payload_with_voice["date_of_birth"] = payload.date_of_birth.isoformat()
+            fallback_payloads.append(payload_with_voice)
+            fallback_payloads.append(
+                {"id": profile_id, "name": payload.name, "voice_id": payload.voice_id}
+            )
         if payload.name:
-            fallback_payload["name"] = payload.name
-        try:
-            created = supabase_insert("profiles", fallback_payload)
-        except HTTPException:
-            created = supabase_insert("profiles", {"id": profile_id})
+            fallback_payloads.append({"id": profile_id, "name": payload.name})
+        fallback_payloads.append({"id": profile_id})
+        created = _try_supabase_insert("profiles", fallback_payloads)
 
     return ProfileOut(
         id=str(created.get("id") or profile_id),
         name=created.get("name") or payload.name,
         date_of_birth=created.get("date_of_birth") or payload.date_of_birth,
+        voice_id=created.get("voice_id") or payload.voice_id,
     )
 
 

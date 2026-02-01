@@ -5,7 +5,7 @@ from pprint import pformat
 
 from app.api.schemas import ContextPack, RetrievedMemory
 from app.core.settings import settings
-from app.db.queries import retrieve_memory_units
+from app.db.queries import list_profile_keywords, retrieve_memory_units
 from app.retrieval.keywords import extract_keywords
 from app.storage.resolver import resolve_public_url
 
@@ -32,7 +32,8 @@ def build_context_pack(question: str, retrieved: list[RetrievedMemory]) -> Conte
 
 
 def retrieve_context(profile_id: str, question: str) -> tuple[ContextPack, list[RetrievedMemory]]:
-    extraction = extract_keywords(question)
+    existing_keywords = list_profile_keywords(profile_id)
+    extraction = extract_keywords(question, existing_keywords=existing_keywords)
     keywords = extraction["keywords"]
     event_types = extraction["event_types"]
     print("=== Retrieval Debug: Keyword Extraction ===")

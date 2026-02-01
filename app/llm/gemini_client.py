@@ -12,6 +12,8 @@ from fastapi import HTTPException, status
 from app.core.settings import settings
 from app.llm.prompts import (
     EVENT_TYPES,
+    KEYWORD_MATCH_SYSTEM_PROMPT,
+    KEYWORD_MATCH_USER_PROMPT_TEMPLATE,
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
     build_extraction_prompt,
@@ -72,6 +74,34 @@ class GeminiClient:
         return {
             "answer_text": parsed.get("answer_text", "I don't know."),
         }
+
+    def match_keywords(
+        self, question: str, existing_keywords: list[str], top_n: int = 8
+    ) -> list[str]:
+        """Match question-derived keywords to existing keyword inventory."""
+        existing_keywords_json = json.dumps(existing_keywords, ensure_ascii=False)
+        prompt = KEYWORD_MATCH_USER_PROMPT_TEMPLATE.format(
+            question=question,
+            existing_keywords_json=existing_keywords_json,
+            top_n=top_n,
+        )
+
+        response = self._client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=[{"role": "user", "parts": [{"text": prompt}]}],
+            config={
+                "system_instruction": KEYWORD_MATCH_SYSTEM_PROMPT,
+                "response_mime_type": "application/json",
+                "temperature": 0.2,
+            },
+        )
+
+        text = getattr(response, "text", "") or ""
+        parsed = _parse_json_response(text) or {}
+        keywords = parsed.get("keywords", [])
+        if not isinstance(keywords, list):
+            return []
+        return [word for word in keywords if isinstance(word, str)]
 
     def extract_from_text(self, text: str, modality: str) -> List[ExtractedUnit]:
         """Extract memory units from text content."""

@@ -110,3 +110,28 @@ def retrieve_memory_units(
 
     retrieved.sort(key=score_memory, reverse=True)
     return retrieved[:top_k]
+
+
+def list_profile_keywords(profile_id: str) -> list[str]:
+    response = (
+        supabase.table("memory_units")
+        .select("keywords")
+        .eq("profile_id", profile_id)
+        .execute()
+    )
+    data = response.data or []
+    seen: set[str] = set()
+    unique: list[str] = []
+    for row in data:
+        for keyword in row.get("keywords") or []:
+            if not isinstance(keyword, str):
+                continue
+            cleaned = keyword.strip()
+            if not cleaned:
+                continue
+            key = cleaned.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(cleaned)
+    return unique

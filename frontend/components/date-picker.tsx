@@ -51,22 +51,38 @@ export function DatePicker({
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }, []);
+  const fromYear = 1900;
+  const toYear = today.getFullYear();
 
   React.useEffect(() => {
     setInputValue(value || "");
   }, [value]);
 
+  const formatDigits = (digits: string) => {
+    const trimmed = digits.slice(0, 8);
+    const year = trimmed.slice(0, 4);
+    const month = trimmed.slice(4, 6);
+    const day = trimmed.slice(6, 8);
+    if (trimmed.length <= 4) return year;
+    if (trimmed.length <= 6) return `${year}-${month}`;
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleInputChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, "");
+    setInputValue(formatDigits(digits));
+  };
+
   const commitInput = (raw: string) => {
-    const trimmed = raw.trim();
-    if (!trimmed) {
-      onChange?.("");
+    const parsed = parseIso(raw);
+    if (!parsed) {
+      setInputValue(value || "");
       return;
     }
-    const parsed = parseIso(trimmed);
-    if (parsed) {
-      const clamped = parsed > today ? today : parsed;
-      onChange?.(toIso(clamped));
-    }
+    const clamped = parsed > today ? today : parsed;
+    const iso = toIso(clamped);
+    setInputValue(iso);
+    onChange?.(iso);
   };
 
   return (
@@ -77,7 +93,7 @@ export function DatePicker({
           inputMode="numeric"
           placeholder={placeholder}
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={(e) => handleInputChange(e.target.value)}
           onBlur={() => commitInput(inputValue)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -109,6 +125,9 @@ export function DatePicker({
           mode="single"
           selected={selectedDate}
           disabled={(date) => date > today}
+          captionLayout="dropdown-buttons"
+          fromYear={fromYear}
+          toYear={toYear}
           onSelect={(date) => {
             if (!date) return;
             onChange?.(toIso(date));

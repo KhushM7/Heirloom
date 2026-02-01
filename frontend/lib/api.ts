@@ -74,16 +74,25 @@ export interface AskResponse {
   source_urls: string[];
 }
 
+export interface AskVoiceResponse {
+  answer_text: string;
+  source_urls: string[];
+  audio_base64: string;
+  audio_mime_type: string;
+}
+
 export interface ProfileCreateRequest {
   profile_id?: string;
   name?: string;
   date_of_birth?: string;
+  voice_id?: string;
 }
 
 export interface ProfileOut {
   id: string;
   name: string | null;
   date_of_birth: string | null;
+  voice_id?: string | null;
 }
 
 export interface MemoryUnitUpdateRequest {
@@ -160,11 +169,41 @@ export async function askQuestion(profileId: string, question: string): Promise<
   });
 }
 
+export async function askQuestionWithVoice(
+  profileId: string,
+  question: string,
+  voiceId?: string
+): Promise<AskVoiceResponse> {
+  return apiRequest(`/profiles/${profileId}/ask-voice`, {
+    method: 'POST',
+    body: JSON.stringify({ question, voice_id: voiceId }),
+  });
+}
+
 export async function createProfile(data: ProfileCreateRequest): Promise<ProfileOut> {
   return apiRequest('/profiles', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+export async function cloneVoiceSample(sample: File, name?: string): Promise<{ voice_id: string }> {
+  const formData = new FormData();
+  formData.append('sample', sample);
+  if (name) {
+    formData.append('name', name);
+  }
+
+  const response = await fetch(`${API_BASE}${API_PREFIX}/profiles/voice-clone`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
 }
 
 export async function updateMemoryUnits(

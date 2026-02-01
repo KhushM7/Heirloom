@@ -23,9 +23,11 @@ import {
   createProfile,
   getMemoryUnits,
   updateMemoryUnits,
+  cloneVoiceSample,
 } from "@/lib/api";
 import useSWR from "swr";
 import { useProfile } from "@/lib/profile-context";
+import { cn } from "@/lib/utils";
 
 export default function PreservePage() {
   const { profileId, setProfileId, profileName, setProfileName } = useProfile();
@@ -34,6 +36,9 @@ export default function PreservePage() {
   const [isProfileSet, setIsProfileSet] = useState(Boolean(profileId));
   const [profileError, setProfileError] = useState("");
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [voiceSample, setVoiceSample] = useState<File | null>(null);
+  const [voiceError, setVoiceError] = useState("");
+  const [isCloningVoice, setIsCloningVoice] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
   const displayName = profileName || "Archive";
 
@@ -54,10 +59,34 @@ export default function PreservePage() {
     if (!profileNameInput.trim()) return;
     setProfileError("");
     setIsCreatingProfile(true);
+    setVoiceError("");
+
+    let voiceId: string | undefined;
+    if (voiceSample) {
+      try {
+        setIsCloningVoice(true);
+        const voiceResponse = await cloneVoiceSample(
+          voiceSample,
+          profileNameInput.trim()
+        );
+        voiceId = voiceResponse.voice_id;
+      } catch (error) {
+        setVoiceError(
+          error instanceof Error ? error.message : "Failed to clone voice."
+        );
+        setIsCreatingProfile(false);
+        setIsCloningVoice(false);
+        return;
+      } finally {
+        setIsCloningVoice(false);
+      }
+    }
+
     try {
       const created = await createProfile({
         name: profileNameInput.trim(),
         date_of_birth: profileDobInput.trim() || undefined,
+        voice_id: voiceId,
       });
       setProfileId(created.id);
       setProfileName(created.name || profileNameInput.trim());
@@ -277,12 +306,48 @@ export default function PreservePage() {
                 placeholder="Date of birth (optional)"
               />
 
+              <div className="space-y-2 text-left">
+                <label className="block text-xs uppercase tracking-[0.2em] text-amber-200/40 font-serif">
+                  Voice Sample (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setVoiceSample(file);
+                    setVoiceError("");
+                  }}
+                  className={cn(
+                    "w-full text-xs text-amber-100/70",
+                    "file:mr-3 file:py-2 file:px-4 file:rounded-md",
+                    "file:border file:border-amber-200/20 file:bg-stone-900/50",
+                    "file:text-amber-100/80 file:font-serif file:text-xs",
+                    "hover:file:bg-stone-900/70 transition"
+                  )}
+                />
+                {voiceSample && (
+                  <p className="text-xs text-amber-200/50 font-serif">
+                    Selected: {voiceSample.name}
+                  </p>
+                )}
+                {voiceError && (
+                  <p className="text-xs text-red-300/80">{voiceError}</p>
+                )}
+              </div>
+
               <Button
                 type="submit"
-                disabled={isCreatingProfile || !profileNameInput.trim()}
+                disabled={
+                  isCreatingProfile || isCloningVoice || !profileNameInput.trim()
+                }
                 className="w-full h-12 bg-gradient-to-r from-amber-900/80 to-amber-800/80 hover:from-amber-800/80 hover:to-amber-700/80 border border-amber-200/20 text-amber-100 font-serif text-lg disabled:opacity-40"
               >
-                {isCreatingProfile ? "Creating..." : "Create Archive"}
+                {isCloningVoice
+                  ? "Capturing Voice..."
+                  : isCreatingProfile
+                  ? "Creating..."
+                  : "Create Archive"}
               </Button>
               {profileError && (
                 <p className="text-xs text-red-300/80">{profileError}</p>

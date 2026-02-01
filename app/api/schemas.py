@@ -86,6 +86,22 @@ class AskResponse(BaseModel):
     source_urls: list[str]  # Kept from File 1
 
 
+class AskVoiceRequest(BaseModel):
+    question: str = Field(..., min_length=1)
+    voice_id: Optional[str] = None
+
+
+class AskVoiceResponse(BaseModel):
+    answer_text: str
+    source_urls: list[str]
+    audio_base64: str
+    audio_mime_type: str
+
+
+class VoiceCloneResponse(BaseModel):
+    voice_id: str
+
+
 class RetrievedMemory(BaseModel):
     memory_unit_id: str
     title: str | None = None  # Made optional from File 2
@@ -109,9 +125,11 @@ class ProfileCreateRequest(BaseModel):
     profile_id: Optional[str] = None
     name: Optional[str] = None
     date_of_birth: Optional[date] = None
+    voice_id: Optional[str] = None
 
 
 class ProfileOut(BaseModel):
     id: str
     name: Optional[str] = None
     date_of_birth: Optional[date] = None
+    voice_id: Optional[str] = None
