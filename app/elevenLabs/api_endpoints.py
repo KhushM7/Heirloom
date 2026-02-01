@@ -88,6 +88,8 @@ async def clone_voice_endpoint(
             }
         )
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to clone voice: {str(e)}")
 
@@ -142,6 +144,8 @@ async def clone_voice_base64_endpoint(
             "message": "Voice cloned and stored successfully"
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to clone voice: {str(e)}")
 
@@ -182,6 +186,8 @@ async def generate_speech_endpoint(
             }
         )
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate speech: {str(e)}")
 
@@ -219,6 +225,8 @@ async def generate_speech_with_voice_id_endpoint(
             }
         )
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate speech: {str(e)}")
 
@@ -254,6 +262,8 @@ async def get_user_voice_endpoint(user_id: str):
             "voice_info": voice_info
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Voice not found: {str(e)}")
 
@@ -288,6 +298,8 @@ async def delete_user_voice_endpoint(user_id: str):
             "voice_id": voice_id
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete voice: {str(e)}")
 

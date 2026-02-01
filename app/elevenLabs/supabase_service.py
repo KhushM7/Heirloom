@@ -1,6 +1,7 @@
 """
 Supabase service for database operations
 """
+import uuid
 from supabase import create_client, Client
 from .config import Config
 
@@ -15,6 +16,14 @@ class SupabaseService:
             Config.SUPABASE_KEY
         )
 
+    @staticmethod
+    def _validate_user_id(user_id: str) -> None:
+        """Ensure user_id is a valid UUID string before querying Supabase."""
+        try:
+            uuid.UUID(str(user_id))
+        except (TypeError, ValueError):
+            raise ValueError("User ID must be a valid UUID.")
+
     def store_voice_id(self, user_id: str, voice_id: str) -> dict:
         """
         Store ElevenLabs voice_id in the profiles table
@@ -26,6 +35,7 @@ class SupabaseService:
         Returns:
             Updated profile data
         """
+        self._validate_user_id(user_id)
         try:
             # Update the voice_id field in the profiles table
             response = self.client.table('profiles').update({
@@ -51,6 +61,7 @@ class SupabaseService:
         Returns:
             voice_id: ElevenLabs voice ID
         """
+        self._validate_user_id(user_id)
         try:
             response = self.client.table('profiles').select('voice_id').eq('id', user_id).execute()
 
@@ -76,6 +87,7 @@ class SupabaseService:
         Returns:
             Profile data dictionary
         """
+        self._validate_user_id(user_id)
         try:
             response = self.client.table('profiles').select('*').eq('id', user_id).execute()
 
@@ -99,6 +111,7 @@ class SupabaseService:
         Returns:
             Created profile data
         """
+        self._validate_user_id(user_id)
         try:
             profile_data = {'id': user_id}
 

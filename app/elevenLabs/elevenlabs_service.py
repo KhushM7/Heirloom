@@ -20,6 +20,28 @@ class ElevenLabsService:
         self.client = ElevenLabs(api_key=Config.ELEVENLABS_API_KEY)
         self.voice_settings_class = VoiceSettings
 
+    def _clone_voice(self, voice_name: str, files: list, description: str = ""):
+        """
+        Internal helper to clone a voice using the ElevenLabs SDK.
+
+        Supports multiple SDK versions by checking available methods.
+        """
+        voices = getattr(self.client, "voices", None)
+
+        if voices and hasattr(voices, "add"):
+            return voices.add(name=voice_name, files=files, description=description)
+
+        if voices and hasattr(voices, "create"):
+            return voices.create(name=voice_name, files=files, description=description)
+
+        if hasattr(self.client, "clone_voice"):
+            return self.client.clone_voice(name=voice_name, files=files, description=description)
+
+        raise AttributeError(
+            "ElevenLabs SDK does not expose a voice cloning method. "
+            "Ensure the elevenlabs package is installed and up to date."
+        )
+
     def clone_voice_from_bytes(self, voice_name: str, audio_data_list: list, description: str = "") -> str:
         """
         Clone a voice using audio data from API endpoints (bytes or base64)
