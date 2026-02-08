@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable
-from uuid import uuid4
 
 import boto3
 import httpx
-import io
 from botocore.exceptions import ClientError
 from fastapi import HTTPException, status
 
@@ -57,6 +56,7 @@ def _require_setting(value: str | None, name: str) -> str:
     return value
 
 
+@lru_cache(maxsize=1)
 def _s3_client():
     return boto3.client(
         "s3",
@@ -67,6 +67,11 @@ def _s3_client():
         region_name=_require_setting(settings.AWS_REGION, "AWS_REGION"),
         endpoint_url=settings.AWS_S3_ENDPOINT_URL or None,
     )
+
+
+@lru_cache(maxsize=1)
+def _http_client() -> httpx.Client:
+    return httpx.Client(timeout=httpx.Timeout(30.0, connect=10.0))
 
 
 def _supabase_headers() -> Dict[str, str]:
@@ -237,7 +242,7 @@ def delete_object(object_key: str) -> None:
 
 def supabase_select(table: str, params: Dict[str, Any]) -> list[dict[str, Any]]:
     url = _supabase_url(table)
-    response = httpx.get(url, headers=_supabase_headers(), params=params, timeout=30.0)
+    response = _http_client().get(url, headers=_supabase_headers(), params=params)
     if response.status_code >= 400:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -250,7 +255,7 @@ def supabase_insert(table: str, payload: Dict[str, Any]) -> dict[str, Any]:
     url = _supabase_url(table)
     headers = _supabase_headers()
     headers["Prefer"] = "return=representation"
-    response = httpx.post(url, headers=headers, json=payload, timeout=30.0)
+    response = _http_client().post(url, headers=headers, json=payload)
     if response.status_code >= 400:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -268,7 +273,7 @@ def supabase_update(
     url = _supabase_url(table)
     headers = _supabase_headers()
     headers["Prefer"] = "return=representation"
-    response = httpx.patch(url, headers=headers, params=filters, json=payload, timeout=30.0)
+    response = _http_client().patch(url, headers=headers, params=filters, json=payload)
     if response.status_code >= 400:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -282,3 +287,4 @@ def find_first(items: Iterable[dict[str, Any]]) -> dict[str, Any] | None:
     for item in items:
         return item
     return None
+

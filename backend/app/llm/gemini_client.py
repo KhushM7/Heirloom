@@ -4,6 +4,7 @@ import json
 import re
 import time
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -230,6 +231,11 @@ class GeminiClient:
         )
 
 
+@lru_cache(maxsize=1)
+def get_gemini_client() -> "GeminiClient":
+    return GeminiClient()
+
+
 def _parse_json_response(text: str) -> dict | None:
     """Parse JSON from a text response, with fallback regex extraction."""
     if not text:
@@ -253,13 +259,13 @@ def _extract_json(text: str) -> Any:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Gemini returned empty response",
         )
-    
+
     # Try to parse the entire response as JSON first
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-    
+
     # Try to find JSON object in the text
     start = text.find("{")
     end = text.rfind("}")
@@ -303,7 +309,7 @@ def _parse_units(payload: Any, raw_text: str = "") -> List[ExtractedUnit]:
                 f"Payload type: {type(payload)}. Raw text: {raw_text[:500]}"
             ),
         )
-    
+
     units: List[ExtractedUnit] = []
     for item in raw_units:
         if not isinstance(item, dict):

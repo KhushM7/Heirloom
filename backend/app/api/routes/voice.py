@@ -13,13 +13,12 @@ from app.elevenLabs.clone_and_tts import (
     resolve_voice_id,
     tts_to_bytes,
 )
-from app.llm.gemini_client import GeminiClient
+from app.llm.gemini_client import get_gemini_client
 from app.retrieval.retrieve import resolve_source_urls, retrieve_context
 
 
 router = APIRouter(prefix="/profiles", tags=["voice"])
 logger = logging.getLogger(__name__)
-gemini_client = GeminiClient()
 
 
 @router.post("/{profile_id}/ask-voice", response_model=AskVoiceResponse)
@@ -54,6 +53,7 @@ async def ask_profile_question_with_voice(
         )
 
     try:
+        gemini_client = get_gemini_client()
         gemini_response = gemini_client.answer_question(
             question=payload.question,
             context_pack=context_pack.model_dump(),

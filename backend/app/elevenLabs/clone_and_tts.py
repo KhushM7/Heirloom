@@ -1,9 +1,12 @@
 import os
+from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
 
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
+
+from app.core.settings import REPO_ROOT
 
 # ---- Config ----
 HARDCODED_TEXT = "Hello! This is a test of my instant voice clone using ElevenLabs."
@@ -15,8 +18,9 @@ MODEL_ID = "eleven_multilingual_v2"
 OUTPUT_FORMAT = "mp3_44100_128"
 
 
+@lru_cache(maxsize=1)
 def get_client() -> ElevenLabs:
-    load_dotenv()
+    load_dotenv(REPO_ROOT / ".env")
     api_key = os.getenv("ELEVENLABS_API_KEY")
     if not api_key:
         raise RuntimeError("Missing ELEVENLABS_API_KEY in environment (.env).")
@@ -96,7 +100,7 @@ def tts_to_bytes(client: ElevenLabs, voice_id: str, text: str) -> bytes:
 
 
 def main(sample_path: str):
-    load_dotenv()
+    load_dotenv(REPO_ROOT / ".env")
     api_key = os.getenv("ELEVENLABS_API_KEY")
     if not api_key:
         raise RuntimeError("Missing ELEVENLABS_API_KEY in environment (.env).")

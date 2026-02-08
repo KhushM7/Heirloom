@@ -4,7 +4,7 @@ import logging
 import re
 from collections import Counter
 
-from app.llm.gemini_client import GeminiClient
+from app.llm.gemini_client import get_gemini_client
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ def _match_keywords_with_gemini(
 ) -> dict:
     if not existing_keywords:
         return {"keywords": [], "matches": []}
-    client = GeminiClient()
+    client = get_gemini_client()
     matched = client.match_keywords(question, existing_keywords, top_n=top_n)
     if not matched:
         return {"keywords": [], "matches": []}
@@ -190,10 +190,10 @@ def extract_keywords(
     logger.debug(
         "Keyword extraction complete.",
         extra={
-            "question": question,
-            "keywords": keywords,
+            "question_length": len(question),
+            "keyword_count": len(keywords),
             "event_types": event_types,
-            "keyword_matches": keyword_matches,
+            "keyword_match_count": len(keyword_matches),
             "matched_from_existing": bool(existing_keywords),
         },
     )

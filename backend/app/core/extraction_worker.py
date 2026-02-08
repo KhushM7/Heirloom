@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from app.llm.gemini_client import GeminiClient
+from app.llm.gemini_client import GeminiClient, get_gemini_client
 from fastapi import HTTPException
 
 from app.core.data_extraction import (
@@ -169,7 +169,7 @@ class ExtractionWorker:
         if not object_key:
             raise HTTPException(status_code=400, detail="Missing object key")
 
-        client = GeminiClient()
+        client = get_gemini_client()
         modality = self._modality(media_asset.get("mime_type"))
 
         if modality == "text":
@@ -319,3 +319,4 @@ class ExtractionWorker:
             },
             {"id": f"eq.{job['id']}"},
         )
+

@@ -1,7 +1,11 @@
-from dotenv import load_dotenv
+from pathlib import Path
 from os import getenv
 
-load_dotenv()
+from dotenv import load_dotenv
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+load_dotenv(REPO_ROOT / ".env")
 
 
 class Settings:
@@ -42,7 +46,6 @@ class Settings:
     # CORS
     # =========================
     CORS_ALLOW_ORIGINS: str = getenv("CORS_ALLOW_ORIGINS", "http://localhost:3000")
-
 
 
 settings = Settings()

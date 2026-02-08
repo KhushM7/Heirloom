@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from pprint import pformat
 
 from app.api.schemas import RetrievedMemory
-from app.db.supabase_client import supabase
+from app.db.supabase_client import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,7 @@ def _parse_datetime(value: str | None) -> datetime | None:
 
 
 def retrieve_memory_units(
-        profile_id: str, keywords: list[str], event_types: list[str] | None = None, top_k: int = 10
+    profile_id: str, keywords: list[str], event_types: list[str] | None = None, top_k: int = 10
 ) -> list[RetrievedMemory]:
     """
     Retrieve memory units with optional event type filtering.
@@ -61,6 +60,7 @@ def retrieve_memory_units(
     """
     event_types = event_types or []
 
+    supabase = get_supabase_client()
     query = (
         supabase.table("memory_units")
         .select(
@@ -75,11 +75,13 @@ def retrieve_memory_units(
 
     response = query.execute()
     data = response.data or []
-    print("=== Retrieval Debug: Database Response ===")
-    print(pformat(data))
     logger.info(
         "Database retrieval complete.",
-        extra={"keyword_filters": keywords, "event_types": event_types, "row_count": len(data)},
+        extra={
+            "keyword_count": len(keywords),
+            "event_type_count": len(event_types),
+            "row_count": len(data),
+        },
     )
 
     retrieved: list[RetrievedMemory] = []
@@ -113,6 +115,7 @@ def retrieve_memory_units(
 
 
 def list_profile_keywords(profile_id: str) -> list[str]:
+    supabase = get_supabase_client()
     response = (
         supabase.table("memory_units")
         .select("keywords")

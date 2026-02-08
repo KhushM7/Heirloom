@@ -5,13 +5,12 @@ from postgrest.exceptions import APIError
 
 from app.api.schemas import AskRequest, AskResponse
 from app.core.settings import settings
-from app.llm.gemini_client import GeminiClient
+from app.llm.gemini_client import get_gemini_client
 from app.retrieval.retrieve import resolve_source_urls, retrieve_context
 
 
 router = APIRouter(prefix="/profiles", tags=["qa"])
 
-gemini_client = GeminiClient()
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +38,7 @@ async def ask_profile_question(profile_id: str, payload: AskRequest) -> AskRespo
         return AskResponse(answer_text="I don't know.", source_urls=[])
 
     try:
+        gemini_client = get_gemini_client()
         gemini_response = gemini_client.answer_question(
             question=payload.question,
             context_pack=context_pack.model_dump(),
