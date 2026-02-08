@@ -1,6 +1,6 @@
 # Frontend API Spec (Heirloom)
 
-Base URL: `http://localhost:8000` (dev)
+Base URL: `http://localhost:3000` (dev)
 API Prefix: `/api/v1`
 
 All endpoints are JSON unless noted. No auth headers are required in current code.
